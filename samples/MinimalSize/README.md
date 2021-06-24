@@ -1,0 +1,11 @@
+# Minimal size sample
+
+This demonstrates how to build a minimal size executable with bflat.
+
+```console
+$ bflat build minimalsize.cs --no-reflection --no-stacktrace-data --no-globalization --no-exception-messages --Os
+```
+
+This will produce a minimalsize(.exe) file that is native compiled. You can launch it. Observe the difference in runtime behavior and size of the output when you omit some of the arguments from the `bflat build` command line above.
+
+Note that if you are running on a Unix-like system, you might want to run the `strip` tool on the native executable to remove the debugging symbols that make the executable larger than it needs to be.
