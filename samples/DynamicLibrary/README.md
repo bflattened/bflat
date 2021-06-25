@@ -17,3 +17,19 @@ $ bflat build libraryconsumer.cs
 ```
 
 This will build a libraryconsumer(.exe) binary that will load the library and invoke functions in it.
+
+Libraryconsumer is going to load the library through dlopen/dlsym (LoadLibrary/GetProcAddress on Windows). If you would like, you can also have it bind statically. Build the consumer program like this:
+
+```console
+$ bflat build libraryconsumer.cs -i:library
+```
+
+This will build the program with a hard reference to the external symbol. You should see a failure during linking if you run the above command. To fix this failure, we need to pass information where to find the symbol to linker.
+
+If you're targeting Windows, run:
+
+```console
+$ bflat build libraryconsumer.cs -i:library --ldflags:library.lib
+```
+
+This will point the linker to the import library generated when building the library.

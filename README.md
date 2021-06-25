@@ -19,7 +19,7 @@ bflat merges the two components together into a single ahead of time crosscompil
 
 bflat can currently target:
 
-* x64 and ARM64 Linux
+* x64 Linux
 * x64 and ARM64 Windows
 
 It can either produce native executables, or native shared libraries that can be called from other languages through FFI.
@@ -103,6 +103,7 @@ Apps compiled with bflat debug same as any other native code. Launch the produce
 
 ## 😢 Current known issues
 
-* Things that depend on libssl don't work on Linux - this includes a lot of crypto. We need to link to libssl statically but the framework code is structured very much against that. Needs a bit work.
-* Globalization is uncondionally disabled on Linux - we need to link with ICU. Needs a bit work.
-* No Linux host of the bflat compiler. This is unforunate fallout from libssl. Apparently the C# compiler insists on calculating SHA hashes of files and we need a working libssl for that.
+* #3 - Things that depend on libssl don't work on Linux - this includes a lot of crypto. We need to link to libssl statically but the framework code is structured very much against that. Needs a bit work.
+* #3 - Globalization is uncondionally disabled on Linux - we need to link with ICU. Needs a bit work.
+* #4 - No Linux host of the bflat compiler. This is unforunate fallout from libssl. Apparently the C# compiler insists on calculating SHA hashes of files and we need a working libssl for that.
+* #5 - Can't build shared libraries for Linux.
