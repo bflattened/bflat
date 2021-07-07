@@ -1,4 +1,4 @@
-# ♭ bflat
+# bflat
 C# as you know it but with Go-inspired tooling that produces small, selfcontained, and native executables out of the box.
 
 ```console
