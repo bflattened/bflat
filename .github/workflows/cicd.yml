@@ -65,6 +65,10 @@ jobs:
           name: debugsymbols-bflat-linux-glibc-x64.zip
           path: layouts/linux-glibc-x64-symbols.tar.gz
 
+      - name: Run tests
+        if: ${{ github.event.inputs.version == '' }}
+        run: dotnet test src/bflat.Tests/bflat.Tests.csproj
+
       - name: Create tag
         if: ${{ github.event.inputs.version != '' }}
         run: |
