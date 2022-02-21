@@ -67,7 +67,7 @@ jobs:
 
       - name: Run tests
         if: ${{ github.event.inputs.version == '' }}
-        run: dotnet test src\bflat.Tests\bflat.Tests.csproj
+        run: dotnet test src/bflat.Tests/bflat.Tests.csproj
 
       - name: Create tag
         if: ${{ github.event.inputs.version != '' }}
