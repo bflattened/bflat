@@ -26,7 +26,7 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: '6.0.x'
-      - name: Ask Github to please let us use the registry
+      - name: Ask Github to please let us use the package registry
         run: |
           cd src/bflat
           dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/bflattened/index.json"
@@ -64,3 +64,62 @@ jobs:
         with:
           name: debugsymbols-bflat-linux-glibc-x64.zip
           path: layouts/linux-glibc-x64-symbols.tar.gz
+
+      - name: Create tag
+        if: ${{ github.event.inputs.version != '' }}
+        run: |
+          git tag v${{ github.event.inputs.version }}
+          git push origin v${{ github.event.inputs.version }}
+      - name: Create Release
+        if: ${{ github.event.inputs.version != '' }}
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          release_name: v${{ github.event.inputs.version }}
+          draft: true
+          prerelease: false
+
+      - name: Upload windows-x64 hosted compiler
+        if: ${{ github.event.inputs.version != '' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: layouts/windows-x64.zip
+          asset_name: bflat-${{ github.event.inputs.version }}-windows-x64.zip
+          asset_content_type: application/zip
+      - name: Upload windows-x64 hosted compiler symbols
+        if: ${{ github.event.inputs.version != '' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: layouts/windows-x64-symbols.zip
+          asset_name: bflat-${{ github.event.inputs.version }}-windows-x64-debugsymbols.zip
+          asset_content_type: application/zip
+  
+      - name: Upload linux-glibc-x64 hosted compiler
+        if: ${{ github.event.inputs.version != '' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: layouts/linux-glibc-x64.tar.gz
+          asset_name: bflat-${{ github.event.inputs.version }}-linux-glibc-x64.tar.gz
+          asset_content_type: application/gzip
+      - name: Upload linux-glibc-x64 hosted compiler symbols
+        if: ${{ github.event.inputs.version != '' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: layouts/linux-glibc-x64-symbols.tar.gz
+          asset_name: bflat-${{ github.event.inputs.version }}-linux-glibc-x64-debugsymbols.tar.gz
+          asset_content_type: application/gzip
