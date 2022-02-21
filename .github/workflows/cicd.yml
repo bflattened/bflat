@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ master ]
+
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version to create'     
+        required: true
+
+jobs:
+  build_and_test:
+    strategy:
+      matrix:
+        include:
+          - vm: ubuntu-latest
+#          - vm: windows-latest
+    runs-on: ${{ matrix.vm }}
+    name: Build and test ${{ matrix.vm }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+      - name: Build
+        run: dotnet build src/bflat/bflat.csproj -t:BuildLayouts
+      - name: Prepare symbols
+        run: |
+          mv layouts/windows-x64/bflat.pdb layouts/obj/windows-x64/
+          objcopy --only-keep-debug layouts/linux-glibc-x64/bflat layouts/obj/linux-glibc-x64/bflat.dwo
+          strip --strip-debug --strip-unneeded layouts/linux-glibc-x64/bflat
+          objcopy --add-gnu-debuglink=layouts/obj/linux-glibc-x64/bflat.dwo layouts/linux-glibc-x64/bflat
+      - name: Create archives
+        run: |
+          (cd layouts/windows-x64 && zip -r ../windows-x64.zip .)
+          zip -j layouts/windows-x64-symbols.zip layouts/obj/windows-x64/bflat.pdb
+          tar -C layouts/linux-glibc-x64/ -czvf layouts/linux-glibc-x64.tar.gz .
+          tar -C layouts/obj/linux-glibc-x64/ -czvf layouts/linux-glibc-x64-symbols.tar.gz bflat.dwo
+      - name: Archive windows-x64 hosted compiler
+        uses: actions/upload-artifact@v2
+        with:
+          name: bflat-windows-x64.zip
+          path: layouts/windows-x64.zip
+      - name: Archive windows-x64 hosted compiler symbols
+        uses: actions/upload-artifact@v2
+        with:
+          name: debugsymbols-bflat-windows-x64.zip
+          path: layouts/windows-x64-symbols.zip
+      - name: Archive linux-glibc-x64 hosted compiler
+        uses: actions/upload-artifact@v2
+        with:
+          name: bflat-linux-glibc-x64.zip
+          path: layouts/linux-glibc-x64.tar.gz
+      - name: Archive linux-glibc-x64 hosted compiler symbols
+        uses: actions/upload-artifact@v2
+        with:
+          name: debugsymbols-bflat-linux-glibc-x64.zip
+          path: layouts/linux-glibc-x64-symbols.tar.gz
