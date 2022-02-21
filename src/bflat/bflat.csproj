@@ -95,6 +95,8 @@
 
     <Unzip SourceFiles="$(DownloadCachePath)compiler-$(CompilerHost)-$(BlobsVersion).zip"
            DestinationFolder="$(OutputPath)" />
+    
+    <Exec Command="chmod +x $(OutputPath)bin/lld" Condition="'$(OS)' != 'Windows_NT' and $(CompilerHost.StartsWith('linux'))" />
 
     <Touch Files="$(IntermediateOutputPath)\compiler-$(CompilerHost)-$(BlobsVersion).semaphore"
            AlwaysCreate="true" />
