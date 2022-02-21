@@ -67,7 +67,8 @@ namespace bflat.Tests
 
             string compilerName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "bflat.exe" : "bflat";
 
-            string currentPath = Path.GetDirectoryName(Environment.ProcessPath);
+            string startPath = Path.GetDirectoryName(Environment.ProcessPath);
+            string currentPath = startPath;
             string root = Path.GetPathRoot(currentPath);
 
             while (currentPath != root)
@@ -80,7 +81,7 @@ namespace bflat.Tests
                 currentPath = Path.GetDirectoryName(currentPath);
             }
 
-            throw new Exception("Compiler not found. Did you build the layouts before running tests?");
+            throw new Exception($"Compiler '{compilerName}' for '{compilerTuple}' not found in '{startPath}' (reached '{currentPath}'). Did you build the layouts before running tests?");
         }
     }
 }
