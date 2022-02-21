@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -67,7 +68,7 @@ namespace bflat.Tests
 
             string compilerName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "bflat.exe" : "bflat";
 
-            string startPath = Path.GetDirectoryName(Environment.ProcessPath);
+            string startPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string currentPath = startPath;
             string root = Path.GetPathRoot(currentPath);
 
