@@ -1,0 +1,9 @@
+syntax: glob
+
+layouts
+[Bb]in/
+[Oo]bj/
+src/bflat/[Nn]u[Gg]et.config
+launchSettings.json
+.vs/
+msbuild.binlog

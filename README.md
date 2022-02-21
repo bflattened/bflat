@@ -13,20 +13,22 @@ hello.exe: PE32+ executable (console) x86-64, for MS Windows
 
 ## 🎻 What exactly is bflat
 
-bflat is a concoction of Roslyn - the "official" C# compiler that produces .NET executables - and NativeAOT (née CoreRT) - the experimental ahead of time compiler for .NET based on CoreCLR's crossgen2. Thanks to this, you get access to the latest C# features using the high performance CoreCLR GC and native code generator (RyuJIT).
+bflat is a concoction of Roslyn - the "official" C# compiler that produces .NET executables - and NativeAOT (née CoreRT) - the ahead of time compiler for .NET based on CoreCLR. Thanks to this, you get access to the latest C# features using the high performance CoreCLR GC and native code generator (RyuJIT).
 
 bflat merges the two components together into a single ahead of time crosscompiler and runtime for C#.
 
 bflat can currently target:
 
-* x64 Linux
-* x64 and ARM64 Windows
+* x64 glibc-based Linux
+* x64 Windows
 
-It can either produce native executables, or native shared libraries that can be called from other languages through FFI.
+Support for ARM64 and musl-based Linux is in the works.
+
+bflat can either produce native executables, or native shared libraries that can be called from other languages through FFI.
 
 ## 🥁 Where to get bflat
 
-Look at the [Releases tab](https://github.com/MichalStrehovsky/bflat/releases) of this repo and download a compiler that matches your host system. These are all crosscompilers and can target any of the supported OSes/architectures.
+Look at the [Releases tab](https://github.com/bflattened/bflat/releases) of this repo and download a compiler that matches your host system. These are all crosscompilers and can target any of the supported OSes/architectures.
 
 Unzip the archive to a convenient location and add the root to your PATH. You're all set. See the samples directory for a couple samples.
 
@@ -36,7 +38,7 @@ That's the point. bflat is to dotnet as VS Code is to VS.
 
 ## 🎙 Where is the source code
 
-The source code is in the respective Roslyn/NativeAOT repositories. I'm not ready for people to see (or to accept pull requests) things that are specific to bflat. If you think bflat is useful, you can leave me a tip in my [tip jar](https://paypal.me/MichalStrehovsky) and include your GitHub user name in a note so that I can give you access to a private repo when I'm ready.
+The source code is split between this repo and [bflattened/runtime](https://github.com/bflattened/runtime). The bflattened/runtime repo is a regularly updated fork of the [dotnet/runtime](https://github.com/dotnet/runtime) repo that contains non-upstreamable bflat-specific changes. The bflattened/runtime repo produces compiler and runtime binaries that this repo consumes.
 
 ## 📻 How to stay up-to-date on bflat?
 
@@ -100,10 +102,3 @@ Besides the preprocessor definitions provided at the command line, bflat defines
 ## 🎹 Debugging bflat apps
 
 Apps compiled with bflat debug same as any other native code. Launch the produced executable under your favorite debugger (gdb or lldb on Linux, or Visual Studio or WinDbg on Windows) and you'll be able to set breakpoints, step, and see local variables.
-
-## 😢 Current known issues
-
-* MichalStrehovsky/bflat#3 - Things that depend on libssl don't work on Linux - this includes a lot of crypto. We need to link to libssl statically but the framework code is structured very much against that. Needs a bit work.
-* MichalStrehovsky/bflat#3 - Globalization is uncondionally disabled on Linux - we need to link with ICU. Needs a bit work.
-* MichalStrehovsky/bflat#4 - No Linux host of the bflat compiler. This is unforunate fallout from libssl. Apparently the C# compiler insists on calculating SHA hashes of files and we need a working libssl for that.
-* MichalStrehovsky/bflat#5 - Can't build shared libraries for Linux.

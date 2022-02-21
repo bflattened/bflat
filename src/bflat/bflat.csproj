@@ -1,0 +1,181 @@
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <RuntimeVersion>7.0.0-preview.3.22118.3</RuntimeVersion>
+    <RuntimeUri>https://github.com/bflattened/runtime/releases/download/</RuntimeUri>
+
+    <BlobsVersion>1.0</BlobsVersion>
+    <BlobsUri>https://github.com/bflattened/blobs/releases/download/</BlobsUri>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BFlat.Compiler" Version="$(RuntimeVersion)" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.1.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <CompilerHost Condition="'$(CompilerHost)' == '' and '$(NETCoreSdkRuntimeIdentifier)' == 'win-x64'">windows-x64</CompilerHost>
+    <CompilerHost Condition="'$(CompilerHost)' == '' and '$(NETCoreSdkRuntimeIdentifier)' == 'linux-x64'">linux-glibc-x64</CompilerHost>
+    <DownloadCachePath Condition="$(DownloadCachePath) == ''">$(BaseIntermediateOutputPath)</DownloadCachePath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedHost Include="windows-x64">
+      <OS>windows</OS>
+      <Arch>x64</Arch>
+    </SupportedHost>
+    <SupportedHost Include="linux-glibc-x64">
+      <OS>linux-glibc</OS>
+      <Arch>x64</Arch>
+    </SupportedHost>
+  </ItemGroup>
+
+  <ItemGroup>
+    <SupportedTarget Include="windows-x64" />
+    <SupportedTarget Include="linux-glibc-x64" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <RuntimeArtifact Include="bflat-compiler-native-$(CompilerHost)" />
+    <RuntimeArtifact Include="@(SupportedTarget->'bflat-libs-%(Identity)')" />
+    <RuntimeArtifact Include="bflat-refs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Blob Include="compiler-$(CompilerHost)" />
+    <Blob Include="@(SupportedTarget->'libs-%(Identity)')" />
+  </ItemGroup>
+
+  <Target Name="CreateCompilerLayout"
+          DependsOnTargets="ExtractHostCompiler;ExtractCompilerBlob;ExtractRefs;ExtractLibraries;ExtractSdkBlobs" />
+
+  <Target Name="DownloadRuntimeArtifacts"
+          AfterTargets="CollectPackageReferences"
+          Condition="!Exists(@(RuntimeArtifact->'$(DownloadCachePath)%(Identity)-$(RuntimeVersion).zip'))"
+          Outputs="@(RuntimeArtifact->'$(DownloadCachePath)%(Identity)-$(RuntimeVersion).zip')">
+
+    <DownloadFile SourceUrl="$(RuntimeUri)v$(RuntimeVersion)/%(RuntimeArtifact.Identity).zip"
+                  Retries="3"
+                  DestinationFolder="$(DownloadCachePath)"
+                  DestinationFileName="%(RuntimeArtifact.Identity)-$(RuntimeVersion).zip" />
+  </Target>
+
+  <Target Name="DownloadBlobs"
+          AfterTargets="CollectPackageReferences"
+          Condition="!Exists(@(Blob->'$(DownloadCachePath)%(Identity)-$(BlobsVersion).zip'))"
+          Outputs="@(Blob->'$(DownloadCachePath)%(Identity)-$(BlobsVersion).zip')">
+
+    <DownloadFile SourceUrl="$(BlobsUri)v$(BlobsVersion)/%(Blob.Identity).zip"
+                  Retries="3"
+                  DestinationFolder="$(DownloadCachePath)"
+                  DestinationFileName="%(Blob.Identity)-$(BlobsVersion).zip" />
+  </Target>
+
+  <Target Name="ExtractHostCompiler"
+          Inputs="$(DownloadCachePath)bflat-compiler-native-$(CompilerHost)-$(RuntimeVersion).zip"
+          Outputs="$(IntermediateOutputPath)bflat-compiler-native-$(CompilerHost)-$(RuntimeVersion).semaphore">
+
+    <Unzip SourceFiles="$(DownloadCachePath)bflat-compiler-native-$(CompilerHost)-$(RuntimeVersion).zip"
+           DestinationFolder="$(OutputPath)" />
+
+    <Touch Files="$(IntermediateOutputPath)\bflat-compiler-native-$(CompilerHost)-$(RuntimeVersion).semaphore"
+           AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="ExtractCompilerBlob"
+          Inputs="$(DownloadCachePath)compiler-$(CompilerHost)-$(BlobsVersion).zip"
+          Outputs="$(IntermediateOutputPath)compiler-$(CompilerHost)-$(BlobsVersion).semaphore">
+
+    <Unzip SourceFiles="$(DownloadCachePath)compiler-$(CompilerHost)-$(BlobsVersion).zip"
+           DestinationFolder="$(OutputPath)" />
+
+    <Touch Files="$(IntermediateOutputPath)\compiler-$(CompilerHost)-$(BlobsVersion).semaphore"
+           AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="ExtractRefs"
+          Inputs="$(DownloadCachePath)bflat-refs-$(RuntimeVersion).zip"
+          Outputs="$(IntermediateOutputPath)bflat-refs-$(RuntimeVersion).semaphore">
+
+    <Unzip SourceFiles="$(DownloadCachePath)bflat-refs-$(RuntimeVersion).zip"
+           DestinationFolder="$(OutputPath)ref" />
+
+    <Touch Files="$(IntermediateOutputPath)\bflat-refs-$(RuntimeVersion).semaphore"
+           AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="ExtractLibraries"
+          Inputs="@(SupportedTarget->'$(DownloadCachePath)bflat-libs-%(Identity)-$(RuntimeVersion).zip')"
+          Outputs="@(SupportedTarget->'$(IntermediateOutputPath)\bflat-libs-%(Identity)-$(RuntimeVersion).semaphore')">
+
+    <Unzip SourceFiles="$(DownloadCachePath)bflat-libs-%(SupportedTarget.Identity)-$(RuntimeVersion).zip"
+           DestinationFolder="$(OutputPath)lib\%(SupportedTarget.Identity)" />
+
+    <Touch Files="$(IntermediateOutputPath)\bflat-libs-%(SupportedTarget.Identity)-$(RuntimeVersion).semaphore"
+           AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="ExtractSdkBlobs"
+          Inputs="@(SupportedTarget->'$(DownloadCachePath)libs-%(Identity)-$(BlobsVersion).zip')"
+          Outputs="@(SupportedTarget->'$(IntermediateOutputPath)\libs-%(Identity)-$(BlobsVersion).semaphore')">
+
+    <Unzip SourceFiles="$(DownloadCachePath)libs-%(SupportedTarget.Identity)-$(BlobsVersion).zip"
+           DestinationFolder="$(OutputPath)" />
+
+    <Touch Files="$(IntermediateOutputPath)\libs-%(SupportedTarget.Identity)-$(BlobsVersion).semaphore"
+           AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="BuildLayouts"
+          Inputs="@(SupportedHost)"
+          Outputs="$(LayoutsDirectory)obj\%(SupportedHost.Identity)\semaphore"
+          DependsOnTargets="Build">
+
+    <Message Text="Creating layout for %(SupportedHost.Identity)..." Importance="High" />
+
+    <PropertyGroup>
+      <LayoutOutputPath>$(LayoutsDirectory)%(SupportedHost.Identity)\</LayoutOutputPath>
+      <IntermediateLayoutOutputPath>$(LayoutsDirectory)obj\%(SupportedHost.Identity)\</IntermediateLayoutOutputPath>
+      <BflatName>bflat</BflatName>
+      <BflatName Condition="'%(SupportedHost.OS)' == 'windows'">bflat.exe</BflatName>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(IntermediateLayoutOutputPath)" />
+
+    <MSBuild Projects="$(MSBuildProjectFullPath)"
+             Targets="DownloadRuntimeArtifacts;DownloadBlobs;CreateCompilerLayout"
+             RunEachTargetSeparately="true"
+             Properties="OutputPath=$(LayoutOutputPath);
+                         CompilerHost=%(SupportedHost.Identity);
+                         DownloadCachePath=$(DownloadCachePath);
+                         IntermediateOutputPath=$(IntermediateLayoutOutputPath)" />
+
+    <ItemGroup>
+      <BflatArg Include="--os:%(SupportedHost.OS)" />
+      <BflatArg Include="--arch:%(SupportedHost.Arch)" />
+      <BflatArg Include="-o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\$(BflatName)&quot;" />
+      <BflatArg Include="@(RuntimeCopyLocalItems->'-r:&quot;%(Identity)&quot;')" />
+    </ItemGroup>
+
+    <WriteLinesToFile File="$(IntermediateLayoutOutputPath)\runbflat.rsp"
+                      Lines="@(BflatArg)"
+                      Overwrite="true"
+                      WriteOnlyWhenDifferent="true" />
+
+    <Exec Command="&quot;$(RunCommand)&quot; build @&quot;$(IntermediateLayoutOutputPath)\runbflat.rsp&quot;" />
+  </Target>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup>
+    <BuildDependsOn>$(BuildDependsOn);CreateCompilerLayout</BuildDependsOn>
+  </PropertyGroup>
+
+</Project>
