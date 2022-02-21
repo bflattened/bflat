@@ -883,7 +883,7 @@ class Program
 
             ldArgs.Append("/incremental:no ");
             ldArgs.Append("/debug ");
-            ldArgs.Append("sokol.lib Runtime.WorkstationGC.lib System.IO.Compression.Native.Aot.lib advapi32.lib bcrypt.lib crypt32.lib iphlpapi.lib kernel32.lib mswsock.lib ncrypt.lib normaliz.lib  ntdll.lib ole32.lib oleaut32.lib user32.lib version.lib ws2_32.lib shell32.lib Secur32.lib msvcrt.lib ");
+            ldArgs.Append("sokol.lib Runtime.WorkstationGC.lib System.IO.Compression.Native.Aot.lib advapi32.lib bcrypt.lib crypt32.lib iphlpapi.lib kernel32.lib mswsock.lib ncrypt.lib normaliz.lib  ntdll.lib ole32.lib oleaut32.lib user32.lib version.lib ws2_32.lib shell32.lib Secur32.Lib msvcrt.lib ");
             ldArgs.Append("/opt:ref,icf /nodefaultlib:libcpmt.lib ");
         }
         else if (_targetOS == TargetOS.Linux)
