@@ -70,12 +70,12 @@ jobs:
         run: dotnet test src/bflat.Tests/bflat.Tests.csproj
 
       - name: Create tag
-        if: ${{ github.event.inputs.version != '' }}
+        if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky' }}
         run: |
           git tag v${{ github.event.inputs.version }}
           git push origin v${{ github.event.inputs.version }}
       - name: Create Release
-        if: ${{ github.event.inputs.version != '' }}
+        if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky' }}
         id: create_release
         uses: actions/create-release@v1
         env:
@@ -87,7 +87,7 @@ jobs:
           prerelease: false
 
       - name: Upload windows-x64 hosted compiler
-        if: ${{ github.event.inputs.version != '' }}
+        if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky' }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -97,7 +97,7 @@ jobs:
           asset_name: bflat-${{ github.event.inputs.version }}-windows-x64.zip
           asset_content_type: application/zip
       - name: Upload windows-x64 hosted compiler symbols
-        if: ${{ github.event.inputs.version != '' }}
+        if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky'}}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -108,7 +108,7 @@ jobs:
           asset_content_type: application/zip
   
       - name: Upload linux-glibc-x64 hosted compiler
-        if: ${{ github.event.inputs.version != '' }}
+        if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky' }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -118,7 +118,7 @@ jobs:
           asset_name: bflat-${{ github.event.inputs.version }}-linux-glibc-x64.tar.gz
           asset_content_type: application/gzip
       - name: Upload linux-glibc-x64 hosted compiler symbols
-        if: ${{ github.event.inputs.version != '' }}
+        if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky' }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
