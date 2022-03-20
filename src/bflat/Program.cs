@@ -235,7 +235,7 @@ class Program
         if (args.Length == 0 ||
             args[args.Length - 1] == "--help" || args[args.Length - 1] == "-h" || args[args.Length - 1] == "-?")
         {
-            Console.WriteLine("bflat C# compiler 0.0.3");
+            Console.WriteLine("bflat C# compiler 0.0.4");
             Console.WriteLine("https://github.com/MichalStrehovsky/bflat");
             Console.WriteLine();
         }
