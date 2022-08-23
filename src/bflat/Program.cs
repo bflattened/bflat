@@ -179,6 +179,8 @@ class Program
             }
         }
 
+        _disableStackTraceData |= _bare;
+
         return argSyntax;
     }
 
@@ -197,8 +199,6 @@ class Program
             initAssemblies.Add("System.Private.Reflection.Execution");
         else
             initAssemblies.Add("System.Private.DisabledReflection");
-
-        initAssemblies.Add("System.Private.Interop");
 
         // Build a list of assemblies that have an initializer that needs to run before
         // any user code runs.
@@ -248,7 +248,8 @@ class Program
             return 1;
         }
 
-        var logger = new Logger(Console.Out, _isVerbose, Array.Empty<int>(), singleWarn: false, Array.Empty<string>(), Array.Empty<string>());
+        ILProvider ilProvider = new NativeAotILProvider();
+        var logger = new Logger(Console.Out, ilProvider, _isVerbose, Array.Empty<int>(), singleWarn: false, Array.Empty<string>(), Array.Empty<string>());
 
         //
         // Set target Architecture and OS
@@ -451,7 +452,7 @@ class Program
         var emitOptions = new EmitOptions(debugInformationFormat: DebugInformationFormat.Embedded);
 
         if (logger.IsVerbose)
-            logger.Writer.WriteLine($"Compiling {trees.Count} C# source files");
+            logger.LogMessage($"Compiling {trees.Count} C# source files");
         var ms = new MemoryStream();
         var result = comp.Emit(ms, options: emitOptions);
         if (!result.Success)
@@ -548,7 +549,7 @@ class Program
         SharedGenericsMode genericsMode = SharedGenericsMode.CanonicalReferenceTypes;
 
         var simdVectorLength = instructionSetSupport.GetVectorTSimdVector();
-        var targetAbi = TargetAbi.CoreRT;
+        var targetAbi = TargetAbi.NativeAot;
         var targetDetails = new TargetDetails(_targetArchitecture, _targetOS, targetAbi, simdVectorLength);
         CompilerTypeSystemContext typeSystemContext =
             new Tsc(targetDetails, genericsMode, supportsReflection ? DelegateFeature.All : 0, ms, compiledModuleName);
@@ -647,6 +648,7 @@ class Program
         {
             directPinvokeList.Add(Path.Combine(homePath, "WindowsAPIs.txt"));
             directPinvokes.Add("System.IO.Compression.Native");
+            directPinvokes.Add("System.Globalization.Native");
             directPinvokes.Add("sokol");
         }
         else
@@ -660,8 +662,6 @@ class Program
         }
 
         PInvokeILEmitterConfiguration pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target, directPinvokes, directPinvokeList);
-
-        ILProvider ilProvider = new CoreRTILProvider();
 
         List<KeyValuePair<string, bool>> featureSwitches = new List<KeyValuePair<string, bool>>
         {
@@ -706,7 +706,6 @@ class Program
 
             metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.AnonymousTypeHeuristic;
             metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.ReflectionILScanning;
-            metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.ReflectedMembersOnly;
         }
         else
         {
@@ -716,7 +715,8 @@ class Program
 
         DynamicInvokeThunkGenerationPolicy invokeThunkGenerationPolicy = new DefaultDynamicInvokeThunkGenerationPolicy();
 
-        var flowAnnotations = new ILCompiler.Dataflow.FlowAnnotations(logger, ilProvider);
+        var compilerGenerateState = new ILCompiler.Dataflow.CompilerGeneratedState(ilProvider, logger);
+        var flowAnnotations = new ILLink.Shared.TrimAnalysis.FlowAnnotations(logger, ilProvider, compilerGenerateState);
 
         MetadataManager metadataManager = new UsageBasedMetadataManager(
             compilationGroup,
@@ -752,7 +752,7 @@ class Program
         if (useScanner)
         {
             if (logger.IsVerbose)
-                logger.Writer.WriteLine("Scanning input IL");
+                logger.LogMessage("Scanning input IL");
             ILScannerBuilder scannerBuilder = builder.GetILScannerBuilder()
                 .UseCompilationRoots(compilationRoots)
                 .UseMetadataManager(metadataManager)
@@ -809,8 +809,8 @@ class Program
         ICompilation compilation = builder.ToCompilation();
 
         if (logger.IsVerbose)
-            logger.Writer.WriteLine("Generating native code");
-        ObjectDumper dumper = _mapFileName != null ? new ObjectDumper(_mapFileName) : null;
+            logger.LogMessage("Generating native code");
+        ObjectDumper dumper = _mapFileName != null ? new XmlObjectDumper(_mapFileName) : null;
         string objectFilePath = Path.ChangeExtension(_outputFilePath, _targetOS == TargetOS.Windows ? ".obj" : ".o");
         CompilationResults compilationResults = compilation.Compile(objectFilePath, dumper);
 
@@ -843,7 +843,7 @@ class Program
         //
 
         if (logger.IsVerbose)
-            logger.Writer.WriteLine("Running the linker");
+            logger.LogMessage("Running the linker");
 
         string ld = Environment.GetEnvironmentVariable("BFLAT_LD");
         if (ld == null)
@@ -873,17 +873,32 @@ class Program
                 ldArgs.Append("/subsystem:windows ");
 
             if (_target == "exe" || _target == "winexe")
-                ldArgs.Append("/entry:wmainCRTStartup bootstrapper.lib ");
-
-            if (_target == "shared")
             {
-                ldArgs.Append("/dll /include:CoreRT_StaticInitialization bootstrapperdll.lib ");
+                if (!_bare)
+                    ldArgs.Append("/entry:wmainCRTStartup bootstrapper.lib ");
+                else
+                    ldArgs.Append("/entry:__managed__Main ");
+            }
+            else if (_target == "shared")
+            {
+                ldArgs.Append("/dll ");
+                if (!_bare)
+                    ldArgs.Append("/include:NativeAOT_StaticInitialization bootstrapperdll.lib ");
                 ldArgs.Append($"/def:\"{exportsFile}\" ");
             }
 
             ldArgs.Append("/incremental:no ");
             ldArgs.Append("/debug ");
-            ldArgs.Append("sokol.lib Runtime.WorkstationGC.lib System.IO.Compression.Native.Aot.lib advapi32.lib bcrypt.lib crypt32.lib iphlpapi.lib kernel32.lib mswsock.lib ncrypt.lib normaliz.lib  ntdll.lib ole32.lib oleaut32.lib user32.lib version.lib ws2_32.lib shell32.lib Secur32.Lib msvcrt.lib ");
+            if (!_bare)
+            {
+                ldArgs.Append("Runtime.WorkstationGC.lib System.IO.Compression.Native.Aot.lib System.Globalization.Native.Aot.lib ");
+            }
+            ldArgs.Append("sokol.lib advapi32.lib bcrypt.lib crypt32.lib iphlpapi.lib kernel32.lib mswsock.lib ncrypt.lib normaliz.lib  ntdll.lib ole32.lib oleaut32.lib user32.lib version.lib ws2_32.lib shell32.lib Secur32.Lib ");
+            ldArgs.Append("api-ms-win-crt-conio-l1-1-0.lib api-ms-win-crt-convert-l1-1-0.lib api-ms-win-crt-environment-l1-1-0.lib ");
+            ldArgs.Append("api-ms-win-crt-filesystem-l1-1-0.lib api-ms-win-crt-heap-l1-1-0.lib api-ms-win-crt-locale-l1-1-0.lib ");
+            ldArgs.Append("api-ms-win-crt-multibyte-l1-1-0.lib api-ms-win-crt-math-l1-1-0.lib ");
+            ldArgs.Append("api-ms-win-crt-process-l1-1-0.lib api-ms-win-crt-runtime-l1-1-0.lib api-ms-win-crt-stdio-l1-1-0.lib ");
+            ldArgs.Append("api-ms-win-crt-string-l1-1-0.lib api-ms-win-crt-time-l1-1-0.lib api-ms-win-crt-utility-l1-1-0.lib ");
             ldArgs.Append("/opt:ref,icf /nodefaultlib:libcpmt.lib ");
         }
         else if (_targetOS == TargetOS.Linux)
@@ -903,6 +918,8 @@ class Program
             {
                 ldArgs.Append("-dynamic-linker /lib64/ld-linux-x86-64.so.2 ");
                 ldArgs.Append($"\"{firstLib}/Scrt1.o\" ");
+                if (_bare)
+                    ldArgs.Append("--defsym=main=__managed__Main ");
             }
             
             ldArgs.AppendFormat("-o \"{0}\" ", _outputFilePath);
@@ -919,17 +936,25 @@ class Program
 
             if (_target == "shared")
             {
-                ldArgs.Append("-lbootstrapperdll ");
+                if (!_bare)
+                {
+                    ldArgs.Append("-lbootstrapperdll ");
+                    ldArgs.Append("--undefined=NativeAOT_StaticInitialization ");
+                }
+                
                 ldArgs.Append("-shared ");
-                ldArgs.Append("--undefined=CoreRT_StaticInitialization ");
                 ldArgs.Append($"--version-script=\"{exportsFile}\" ");
             }
             else
             {
-                ldArgs.Append("-lbootstrapper -pie ");
+                if (!_bare)
+                    ldArgs.Append("-lbootstrapper ");
+                ldArgs.Append("-pie ");
             }
 
-            ldArgs.Append("-lRuntime.WorkstationGC -lSystem.Native -lSystem.Globalization.Native -lSystem.IO.Compression.Native -lSystem.Net.Security.Native -lSystem.Security.Cryptography.Native.OpenSsl ");
+            if (!_bare)
+                ldArgs.Append("-lRuntime.WorkstationGC -lSystem.Native -lSystem.Globalization.Native -lSystem.IO.Compression.Native -lSystem.Net.Security.Native -lSystem.Security.Cryptography.Native.OpenSsl ");
+            
             ldArgs.Append("--as-needed -lstdc++ -ldl -lm -lz -lgssapi_krb5 -lrt -z relro -z now --discard-all --gc-sections -lgcc --as-needed -lgcc_s --no-as-needed -lpthread -lc -lgcc --as-needed -lgcc_s ");
             ldArgs.Append($"\"{firstLib}/crtendS.o\" ");
             ldArgs.Append($"\"{firstLib}/crtn.o\" ");

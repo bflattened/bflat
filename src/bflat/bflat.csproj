@@ -8,10 +8,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <RuntimeVersion>7.0.0-preview.3.22167.1</RuntimeVersion>
+    <RuntimeVersion>7.0.0-preview.7.22375.9</RuntimeVersion>
     <RuntimeUri>https://github.com/bflattened/runtime/releases/download/</RuntimeUri>
 
-    <BlobsVersion>1.0</BlobsVersion>
+    <BlobsVersion>1.1</BlobsVersion>
     <BlobsUri>https://github.com/bflattened/blobs/releases/download/</BlobsUri>
   </PropertyGroup>
 
