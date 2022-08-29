@@ -1,4 +1,4 @@
-// bflat C# compiler
+﻿// bflat C# compiler
 // Copyright (C) 2021-2022 Michal Strehovsky
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,31 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System;
-using System.CommandLine;
+using System.CommandLine.Invocation;
+using System.CommandLine.Parsing;
+using System.Threading.Tasks;
 
-class Program
+internal abstract class CommandBase : ICommandHandler
 {
-    private static int Main(string[] args)
-    {
-
-        var root = new RootCommand();
-        root.Add(BuildCommand.Create());
-        root.Add(ILBuildCommand.Create());
-
-#if DEBUG
-        return root.Invoke(args);
-#else
-        try
-        {
-            return root.Invoke(args);
-        }
-        catch (Exception e)
-        {
-            Console.Error.WriteLine("Error: " + e.Message);
-            Console.Error.WriteLine(e.ToString());
-            return 1;
-        }
-#endif
-    }
+    public Task<int> InvokeAsync(InvocationContext context) => Task.FromResult(Handle(context.ParseResult));
+    public int Invoke(InvocationContext context) => Handle(context.ParseResult);
+    public abstract int Handle(ParseResult result);
 }
