@@ -33,7 +33,7 @@
       <Arch>x64</Arch>
     </SupportedHost>
     <SupportedHost Include="linux-glibc-x64">
-      <OS>linux-glibc</OS>
+      <OS>linux</OS>
       <Arch>x64</Arch>
     </SupportedHost>
   </ItemGroup>
