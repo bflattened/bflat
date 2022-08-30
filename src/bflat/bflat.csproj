@@ -8,16 +8,29 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <RuntimeVersion>7.0.0-preview.7.22375.9</RuntimeVersion>
+    <RuntimeVersion>7.0.0-rc.1.22429.1</RuntimeVersion>
     <RuntimeUri>https://github.com/bflattened/runtime/releases/download/</RuntimeUri>
 
     <BlobsVersion>1.1</BlobsVersion>
     <BlobsUri>https://github.com/bflattened/blobs/releases/download/</BlobsUri>
+
+    <MicrosoftCodeAnalysisCSharpVersion>4.4.0-1.final</MicrosoftCodeAnalysisCSharpVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
+      <_Parameter1>BflatRuntimeVersion</_Parameter1>
+      <_Parameter2>$(RuntimeVersion)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
+      <_Parameter1>MicrosoftCodeAnalysisCSharpVersion</_Parameter1>
+      <_Parameter2>$(MicrosoftCodeAnalysisCSharpVersion)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BFlat.Compiler" Version="$(RuntimeVersion)" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.1.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="$(MicrosoftCodeAnalysisCSharpVersion)" />
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
   </ItemGroup>
 
@@ -161,6 +174,7 @@
                          IntermediateOutputPath=$(IntermediateLayoutOutputPath)" />
 
     <ItemGroup>
+      <BflatArg Include="@(Compile->'&quot;%(Identity)&quot;')" />
       <BflatArg Include="--os:%(SupportedHost.OS)" />
       <BflatArg Include="--arch:%(SupportedHost.Arch)" />
       <BflatArg Include="-o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\$(BflatName)&quot;" />

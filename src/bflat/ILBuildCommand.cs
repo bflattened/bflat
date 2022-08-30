@@ -178,7 +178,10 @@ internal class ILBuildCommand : CommandBase
         foreach (var sourceFile in inputFiles)
         {
             var st = SourceText.From(File.OpenRead(sourceFile));
-            CSharpParseOptions parseOptions = new CSharpParseOptions(preprocessorSymbols: defines);
+            CSharpParseOptions parseOptions = new CSharpParseOptions(
+                languageVersion: LanguageVersion.Latest,
+                documentationMode: DocumentationMode.None,
+                preprocessorSymbols: defines);
             string path = sourceFile;
             if (!Path.IsPathRooted(sourceFile))
                 path = Path.GetFullPath(sourceFile, Directory.GetCurrentDirectory());
