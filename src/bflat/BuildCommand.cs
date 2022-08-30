@@ -49,7 +49,7 @@ internal class BuildCommand : CommandBase
     private static Option<bool> NoExceptionMessagesOption = new Option<bool>("--no-exception-messages", "Disable exception messages");
 
     private static Option<bool> NoLinkOption = new Option<bool>("-c", "Produce object file, but don't run linker");
-    private static Option<string[]> LdFlagsOption = new Option<string[]>(new string[] { "-l", "--ldflags" }, "Arguments to pass to the linker");
+    private static Option<string[]> LdFlagsOption = new Option<string[]>(new string[] { "--ldflags" }, "Arguments to pass to the linker");
     private static Option<bool> PrintCommandsOption = new Option<bool>("-x", "Print the commands");
 
     private static Option<string[]> DirectPInvokesOption = new Option<string[]>("-i", "Bind to entrypoint statically")
@@ -103,7 +103,6 @@ internal class BuildCommand : CommandBase
             CommonOptions.VerbosityOption,
         };
         command.Handler = new BuildCommand();
-        command.TreatUnmatchedTokensAsErrors = true;
 
         return command;
     }
@@ -192,16 +191,23 @@ internal class BuildCommand : CommandBase
 
         BuildTargetType buildTargetType = result.GetValueForOption(CommonOptions.TargetOption);
         string compiledModuleName = Path.GetFileName(outputNameWithoutSuffix);
-        CSharpCompilation sourceCompilation = ILBuildCommand.CreateCompilation(compiledModuleName, inputFiles, references, defines, optimizationLevel, buildTargetType, targetArchitecture, targetOS);
 
+        PerfWatch createCompilationWatch = new PerfWatch("Create IL compilation");
+        CSharpCompilation sourceCompilation = ILBuildCommand.CreateCompilation(compiledModuleName, inputFiles, references, defines, optimizationLevel, buildTargetType, targetArchitecture, targetOS);
+        createCompilationWatch.Complete();
+
+        PerfWatch getEntryPointWatch = new PerfWatch("GetEntryPoint");
         bool nativeLib = sourceCompilation.GetEntryPoint(CancellationToken.None) == null;
+        getEntryPointWatch.Complete();
         if (buildTargetType == 0)
             buildTargetType = nativeLib ? BuildTargetType.Shared : BuildTargetType.Exe;
 
         var emitOptions = new EmitOptions(debugInformationFormat: DebugInformationFormat.Embedded);
 
         var ms = new MemoryStream();
+        PerfWatch emitWatch = new PerfWatch("C# compiler emit");
         var compResult = sourceCompilation.Emit(ms, options: emitOptions);
+        emitWatch.Complete();
         if (!compResult.Success)
         {
             IEnumerable<Diagnostic> failures = compResult.Diagnostics.Where(diagnostic =>
@@ -286,6 +292,9 @@ internal class BuildCommand : CommandBase
         bool disableReflection = result.GetValueForOption(NoReflectionOption);
         bool disableStackTraceData = result.GetValueForOption(NoStackTraceDataOption) || bare;
         string systemModuleName = DefaultSystemModule;
+        if (bare && references.Length == 0)
+            systemModuleName = compiledModuleName;
+
         bool supportsReflection = !disableReflection && systemModuleName == DefaultSystemModule;
 
         //
@@ -541,7 +550,9 @@ internal class BuildCommand : CommandBase
 
             IILScanner scanner = scannerBuilder.ToILScanner();
 
+            PerfWatch scanWatch = new PerfWatch("Scanner");
             scanResults = scanner.Scan();
+            scanWatch.Complete();
 
             metadataManager = ((UsageBasedMetadataManager)metadataManager).ToAnalysisBasedMetadataManager();
 
@@ -623,7 +634,10 @@ internal class BuildCommand : CommandBase
         string mapFileName = result.GetValueForOption(MapFileOption);
         ObjectDumper dumper = mapFileName != null ? new XmlObjectDumper(mapFileName) : null;
         string objectFilePath = Path.ChangeExtension(outputFilePath, targetOS == TargetOS.Windows ? ".obj" : ".o");
+
+        PerfWatch compileWatch = new PerfWatch("Native compile");
         CompilationResults compilationResults = compilation.Compile(objectFilePath, dumper);
+        compileWatch.Complete();
 
         string exportsFile = null;
         if (nativeLib)
@@ -782,8 +796,10 @@ internal class BuildCommand : CommandBase
             Console.WriteLine($"{ld} {ldArgs}");
         }
 
+        PerfWatch linkWatch = new PerfWatch("Link");
         var p = Process.Start(ld, ldArgs.ToString());
         p.WaitForExit();
+        linkWatch.Complete();
 
         int linkerExitCode = p.ExitCode;
 

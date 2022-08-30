@@ -16,15 +16,46 @@
 
 using System;
 using System.CommandLine;
+using System.Reflection;
 
 class Program
 {
+    private readonly static Option<bool> InfoOption = new Option<bool>("--info", "Show .NET information");
+
     private static int Main(string[] args)
     {
+        using PerfWatch total = new PerfWatch("Total");
 
-        var root = new RootCommand();
-        root.Add(BuildCommand.Create());
-        root.Add(ILBuildCommand.Create());
+        var root = new RootCommand(
+            "Bflat C# compiler\n" +
+            "Copyright (c) 2021-2022 Michal Strehovsky\n" +
+            "https://bflattened.net\n")
+        {
+            BuildCommand.Create(),
+            ILBuildCommand.Create(),
+            InfoOption,
+        };
+        root.SetHandler(ctx =>
+        {
+            if (ctx.ParseResult.GetValueForOption(InfoOption))
+            {
+                foreach (var attr in Assembly.GetExecutingAssembly().GetCustomAttributes<AssemblyMetadataAttribute>())
+                {
+                    string friendlyName = attr.Key switch
+                    {
+                        "BflatRuntimeVersion" => ".NET SDK",
+                        "MicrosoftCodeAnalysisCSharpVersion" => "C# Compiler",
+                        _ => null,
+                    };
+
+                    if (friendlyName != null)
+                    {
+                        Console.WriteLine($"{friendlyName} Version:");
+                        Console.WriteLine($"  {attr.Value}");
+                    }
+                }
+            }
+        });
 
 #if DEBUG
         return root.Invoke(args);
