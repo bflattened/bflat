@@ -40,7 +40,7 @@ internal static class CommonOptions
 
     public static Option<bool> DeterministicOption =
         new Option<bool>("--deterministic",
-            "Produce deterministic outputs including timestamps and GUIDs");
+            "Produce deterministic outputs including timestamps");
 
     public static Option<string> OutputOption =
         new Option<string>(new string[] { "-o", "--out" },
