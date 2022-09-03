@@ -69,10 +69,17 @@ internal class BuildCommand : CommandBase
     {
         ArgumentHelpName = "linux|windows"
     };
+    
+    private static Option<string> TargetLibcOption = new Option<string>("--libc", "Target libc ('shcrt' or 'none' on Windows)");
 
     private static Option<string> MapFileOption = new Option<string>("--map", "Generate an object map file")
     {
         ArgumentHelpName = "file",
+    };
+
+    private static Option<string[]> FeatureSwitchOption = new Option<string[]>("--feature", "Set feature switch value")
+    {
+        ArgumentHelpName = "Feature=[true|false]",
     };
 
     public static Command Create()
@@ -89,6 +96,7 @@ internal class BuildCommand : CommandBase
             PrintCommandsOption,
             TargetArchitectureOption,
             TargetOSOption,
+            TargetLibcOption,
             OptimizeSizeOption,
             OptimizeSpeedOption,
             DisableOptimizationOption,
@@ -98,6 +106,7 @@ internal class BuildCommand : CommandBase
             NoExceptionMessagesOption,
             MapFileOption,
             DirectPInvokesOption,
+            FeatureSwitchOption,
             CommonOptions.BareOption,
             CommonOptions.DeterministicOption,
             CommonOptions.VerbosityOption,
@@ -187,7 +196,7 @@ internal class BuildCommand : CommandBase
 
         ILProvider ilProvider = new NativeAotILProvider();
         bool verbose = result.GetValueForOption(CommonOptions.VerbosityOption);
-        var logger = new Logger(Console.Out, ilProvider, verbose, Array.Empty<int>(), singleWarn: false, Array.Empty<string>(), Array.Empty<string>());
+        var logger = new Logger(Console.Out, ilProvider, verbose, Array.Empty<int>(), singleWarn: false, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>());
 
         BuildTargetType buildTargetType = result.GetValueForOption(CommonOptions.TargetOption);
         string compiledModuleName = Path.GetFileName(outputNameWithoutSuffix);
@@ -447,37 +456,48 @@ internal class BuildCommand : CommandBase
 
         PInvokeILEmitterConfiguration pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target, directPinvokes, directPinvokeList);
 
-        List<KeyValuePair<string, bool>> featureSwitches = new List<KeyValuePair<string, bool>>
+        var featureSwitches = new Dictionary<string, bool>()
         {
-            KeyValuePair.Create("System.Diagnostics.Debugger.IsSupported", false),
-            KeyValuePair.Create("System.Diagnostics.Tracing.EventSource.IsSupported", false),
-            KeyValuePair.Create("System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization", false),
-            KeyValuePair.Create("System.Resources.ResourceManager.AllowCustomResourceTypes", false),
-            KeyValuePair.Create("System.Text.Encoding.EnableUnsafeUTF7Encoding", false),
-            KeyValuePair.Create("System.Runtime.Serialization.DataContractSerializer.IsReflectionOnly", true),
-            KeyValuePair.Create("System.Xml.Serialization.XmlSerializer.IsReflectionOnly", true),
-            KeyValuePair.Create("System.Xml.XmlDownloadManager.IsNonFileStreamSupported", false),
-            KeyValuePair.Create("System.Linq.Expressions.CanCompileToIL", false),
-            KeyValuePair.Create("System.Linq.Expressions.CanEmitObjectArrayDelegate", false),
-            KeyValuePair.Create("System.Linq.Expressions.CanCreateArbitraryDelegates", false),
+            { "System.Diagnostics.Debugger.IsSupported", false },
+            { "System.Diagnostics.Tracing.EventSource.IsSupported", false },
+            { "System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization", false },
+            { "System.Resources.ResourceManager.AllowCustomResourceTypes", false },
+            { "System.Text.Encoding.EnableUnsafeUTF7Encoding", false },
+            { "System.Runtime.Serialization.DataContractSerializer.IsReflectionOnly", true },
+            { "System.Xml.Serialization.XmlSerializer.IsReflectionOnly", true },
+            { "System.Xml.XmlDownloadManager.IsNonFileStreamSupported", false },
+            { "System.Linq.Expressions.CanCompileToIL", false },
+            { "System.Linq.Expressions.CanEmitObjectArrayDelegate", false },
+            { "System.Linq.Expressions.CanCreateArbitraryDelegates", false },
         };
 
         bool disableExceptionMessages = result.GetValueForOption(NoExceptionMessagesOption);
         if (disableExceptionMessages || disableReflection)
         {
-            featureSwitches.Add(KeyValuePair.Create("System.Resources.UseSystemResourceKeys", true));
+            featureSwitches.Add("System.Resources.UseSystemResourceKeys", true);
         }
 
         bool disableGlobalization = result.GetValueForOption(NoGlobalizationOption);
         if (disableGlobalization)
         {
-            featureSwitches.Add(KeyValuePair.Create("System.Globalization.Invariant", true));
+            featureSwitches.Add("System.Globalization.Invariant", true);
         }
 
         if (disableReflection)
         {
-            featureSwitches.Add(KeyValuePair.Create("System.Collections.Generic.DefaultComparers", false));
-            featureSwitches.Add(KeyValuePair.Create("System.Reflection.IsReflectionExecutionAvailable", false));
+            featureSwitches.Add("System.Collections.Generic.DefaultComparers", false);
+            featureSwitches.Add("System.Reflection.IsReflectionExecutionAvailable", false);
+        }
+
+        foreach (var featurePair in result.GetValueForOption(FeatureSwitchOption))
+        {
+            int index = featurePair.IndexOf('=');
+            if (index <= 0 || index == featurePair.Length - 1)
+                continue;
+
+            string name = featurePair.Substring(0, index);
+            bool value = featurePair.Substring(index + 1) != "false";
+            featureSwitches[name] = value;
         }
 
         ilProvider = new FeatureSwitchManager(ilProvider, featureSwitches);
@@ -679,6 +699,7 @@ internal class BuildCommand : CommandBase
         }
 
         bool deterministic = result.GetValueForOption(CommonOptions.DeterministicOption);
+        string libc = result.GetValueForOption(TargetLibcOption);
 
         var ldArgs = new StringBuilder();
 
@@ -723,11 +744,16 @@ internal class BuildCommand : CommandBase
                 ldArgs.Append("Runtime.WorkstationGC.lib System.IO.Compression.Native.Aot.lib System.Globalization.Native.Aot.lib ");
             }
             ldArgs.Append("sokol.lib advapi32.lib bcrypt.lib crypt32.lib iphlpapi.lib kernel32.lib mswsock.lib ncrypt.lib normaliz.lib  ntdll.lib ole32.lib oleaut32.lib user32.lib version.lib ws2_32.lib shell32.lib Secur32.Lib ");
-            ldArgs.Append("api-ms-win-crt-conio-l1-1-0.lib api-ms-win-crt-convert-l1-1-0.lib api-ms-win-crt-environment-l1-1-0.lib ");
-            ldArgs.Append("api-ms-win-crt-filesystem-l1-1-0.lib api-ms-win-crt-heap-l1-1-0.lib api-ms-win-crt-locale-l1-1-0.lib ");
-            ldArgs.Append("api-ms-win-crt-multibyte-l1-1-0.lib api-ms-win-crt-math-l1-1-0.lib ");
-            ldArgs.Append("api-ms-win-crt-process-l1-1-0.lib api-ms-win-crt-runtime-l1-1-0.lib api-ms-win-crt-stdio-l1-1-0.lib ");
-            ldArgs.Append("api-ms-win-crt-string-l1-1-0.lib api-ms-win-crt-time-l1-1-0.lib api-ms-win-crt-utility-l1-1-0.lib ");
+
+            if (libc != "none")
+            {
+                ldArgs.Append("shcrt.lib ");
+                ldArgs.Append("api-ms-win-crt-conio-l1-1-0.lib api-ms-win-crt-convert-l1-1-0.lib api-ms-win-crt-environment-l1-1-0.lib ");
+                ldArgs.Append("api-ms-win-crt-filesystem-l1-1-0.lib api-ms-win-crt-heap-l1-1-0.lib api-ms-win-crt-locale-l1-1-0.lib ");
+                ldArgs.Append("api-ms-win-crt-multibyte-l1-1-0.lib api-ms-win-crt-math-l1-1-0.lib ");
+                ldArgs.Append("api-ms-win-crt-process-l1-1-0.lib api-ms-win-crt-runtime-l1-1-0.lib api-ms-win-crt-stdio-l1-1-0.lib ");
+                ldArgs.Append("api-ms-win-crt-string-l1-1-0.lib api-ms-win-crt-time-l1-1-0.lib api-ms-win-crt-utility-l1-1-0.lib ");
+            }
             ldArgs.Append("/opt:ref,icf /nodefaultlib:libcpmt.lib ");
         }
         else if (targetOS == TargetOS.Linux)
