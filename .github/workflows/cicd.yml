@@ -30,8 +30,12 @@ jobs:
         run: |
           cd src/bflat
           dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/bflattened/index.json"
-      - name: Build
+      - name: Build (CI)
+        if: ${{ github.event.inputs.version == '' }}
         run: dotnet build src/bflat/bflat.csproj -t:BuildLayouts
+      - name: Build (CD)
+        if: ${{ github.event.inputs.version != '' }}
+        run: dotnet build src/bflat/bflat.csproj -t:BuildLayouts -p:Version=${{ github.event.inputs.version }}
       - name: Prepare symbols
         run: |
           mv layouts/windows-x64/bflat.pdb layouts/obj/windows-x64/
