@@ -5,6 +5,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Version Condition="'$(Version)' == ''">42.42.42.42</Version>
   </PropertyGroup>
 
   <PropertyGroup>

@@ -29,7 +29,7 @@ class Program
         var root = new RootCommand(
             "Bflat C# compiler\n" +
             "Copyright (c) 2021-2022 Michal Strehovsky\n" +
-            "https://bflattened.net\n")
+            "https://flattened.net\n")
         {
             BuildCommand.Create(),
             ILBuildCommand.Create(),
@@ -43,7 +43,7 @@ class Program
                 {
                     string friendlyName = attr.Key switch
                     {
-                        "BflatRuntimeVersion" => ".NET SDK",
+                        "BflatRuntimeVersion" => ".NET Runtime",
                         "MicrosoftCodeAnalysisCSharpVersion" => "C# Compiler",
                         _ => null,
                     };
