@@ -30,7 +30,6 @@ using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
 
 using Internal.TypeSystem;
-using Internal.JitInterface;
 
 internal class ILBuildCommand : CommandBase
 {
@@ -50,6 +49,7 @@ internal class ILBuildCommand : CommandBase
             CommonOptions.VerbosityOption,
             CommonOptions.OutputOption,
             CommonOptions.TargetOption,
+            CommonOptions.ResourceOption,
             OptimizeOption,
         };
         command.Handler = new ILBuildCommand();
@@ -97,7 +97,8 @@ internal class ILBuildCommand : CommandBase
 
         using (var fs = File.Create(outputFileName))
         {
-            var compResult = compilation.Emit(fs, options: emitOptions);
+            var resinfos = CommonOptions.GetResourceDescriptions(result.GetValueForOption(CommonOptions.ResourceOption));
+            var compResult = compilation.Emit(fs, manifestResources: resinfos, options: emitOptions);
             if (!compResult.Success)
             {
                 IEnumerable<Diagnostic> failures = compResult.Diagnostics.Where(diagnostic =>

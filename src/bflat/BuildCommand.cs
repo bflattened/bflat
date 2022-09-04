@@ -107,6 +107,7 @@ internal class BuildCommand : CommandBase
             MapFileOption,
             DirectPInvokesOption,
             FeatureSwitchOption,
+            CommonOptions.ResourceOption,
             CommonOptions.BareOption,
             CommonOptions.DeterministicOption,
             CommonOptions.VerbosityOption,
@@ -215,7 +216,8 @@ internal class BuildCommand : CommandBase
 
         var ms = new MemoryStream();
         PerfWatch emitWatch = new PerfWatch("C# compiler emit");
-        var compResult = sourceCompilation.Emit(ms, options: emitOptions);
+        var resinfos = CommonOptions.GetResourceDescriptions(result.GetValueForOption(CommonOptions.ResourceOption));
+        var compResult = sourceCompilation.Emit(ms, manifestResources: resinfos, options: emitOptions);
         emitWatch.Complete();
         if (!compResult.Success)
         {

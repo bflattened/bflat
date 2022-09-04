@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
-using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
 
@@ -52,6 +52,14 @@ internal static class CommonOptions
     public static Option<string[]> DefinedSymbolsOption =
         new Option<string[]>(new string[] { "-d", "--define" },
             "Define conditional compilation symbol(s)");
+
+    public static Option<string[]> ResourceOption =
+    new Option<string[]>(new string[] { "-res", "--resource" },
+        "Managed resource to include")
+    {
+        ArgumentHelpName = "<file>[,<name>[,public|private]]",
+    };
+
 
     public static Option<BuildTargetType> TargetOption =
         new Option<BuildTargetType>("--target",
@@ -91,6 +99,27 @@ internal static class CommonOptions
         string refPath = Path.Combine(HomePath, "ref");
         result.AddRange(Directory.GetFiles(refPath, "*.dll"));
         return result.ToArray();
+    }
+
+    public static IEnumerable<ResourceDescription> GetResourceDescriptions(string[] resinfos)
+    {
+        foreach (var resinfo in resinfos)
+        {
+            var components = resinfo.Split(',');
+            string fileName = components[0];
+            string name = Path.GetFileName(fileName);
+            if (components.Length > 1)
+            {
+                name = components[1];
+            }
+            bool pub = true;
+            if (components.Length > 2)
+            {
+                pub = components[2] != "private";
+            }
+
+            yield return new ResourceDescription(name, () => File.OpenRead(fileName), pub);
+        }
     }
 }
 
