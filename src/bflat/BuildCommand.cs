@@ -104,6 +104,7 @@ internal class BuildCommand : CommandBase
             NoStackTraceDataOption,
             NoGlobalizationOption,
             NoExceptionMessagesOption,
+            CommonOptions.NoDebugInfoOption,
             MapFileOption,
             DirectPInvokesOption,
             FeatureSwitchOption,
@@ -219,7 +220,9 @@ internal class BuildCommand : CommandBase
             nativeLib = buildTargetType == BuildTargetType.Shared;
         }
 
-        var emitOptions = new EmitOptions(debugInformationFormat: DebugInformationFormat.Embedded);
+        DebugInformationFormat debugInfoFormat = result.GetValueForOption(CommonOptions.NoDebugInfoOption)
+            ? 0 : DebugInformationFormat.Embedded;
+        var emitOptions = new EmitOptions(debugInformationFormat: debugInfoFormat);
 
         var ms = new MemoryStream();
         PerfWatch emitWatch = new PerfWatch("C# compiler emit");
@@ -588,7 +591,8 @@ internal class BuildCommand : CommandBase
             interopStubManager = scanResults.GetInteropStubManager(interopStateManager, pinvokePolicy);
         }
 
-        DebugInformationProvider debugInfoProvider = new DebugInformationProvider();
+        DebugInformationProvider debugInfoProvider =
+            debugInfoFormat == 0 ? new NullDebugInformationProvider() : new DebugInformationProvider();
 
         DependencyTrackingLevel trackingLevel = DependencyTrackingLevel.None;
 
@@ -747,7 +751,8 @@ internal class BuildCommand : CommandBase
             }
 
             ldArgs.Append("/incremental:no ");
-            ldArgs.Append("/debug ");
+            if (debugInfoFormat != 0)
+                ldArgs.Append("/debug ");
             if (!bare)
             {
                 ldArgs.Append("Runtime.WorkstationGC.lib System.IO.Compression.Native.Aot.lib System.Globalization.Native.Aot.lib ");
