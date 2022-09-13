@@ -16,6 +16,7 @@
 
 using System;
 using System.CommandLine;
+using System.CommandLine.Help;
 using System.Reflection;
 
 class Program
@@ -54,6 +55,10 @@ class Program
                         Console.WriteLine($"  {attr.Value}");
                     }
                 }
+            }
+            else
+            {
+                ctx.HelpBuilder.Write(root, Console.Out);
             }
         });
 
