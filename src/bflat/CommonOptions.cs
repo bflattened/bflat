@@ -67,6 +67,8 @@ internal static class CommonOptions
 
     public static Argument<string[]> InputFilesArgument = new Argument<string[]>() { HelpName = "file list" };
 
+    public static Option<bool> NoDebugInfoOption = new Option<bool>("--no-debug-info", "Disable generation of debug information");
+
     public static string GetOutputFileNameWithoutSuffix(string[] inputFileNames)
     {
         string outputFileName;

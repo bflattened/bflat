@@ -50,6 +50,7 @@ internal class ILBuildCommand : CommandBase
             CommonOptions.OutputOption,
             CommonOptions.TargetOption,
             CommonOptions.ResourceOption,
+            CommonOptions.NoDebugInfoOption,
             OptimizeOption,
         };
         command.Handler = new ILBuildCommand();
@@ -80,7 +81,9 @@ internal class ILBuildCommand : CommandBase
             buildTargetType,
             deterministic);
 
-        var emitOptions = new EmitOptions(debugInformationFormat: DebugInformationFormat.Embedded);
+        DebugInformationFormat debugInfoFormat = result.GetValueForOption(CommonOptions.NoDebugInfoOption)
+            ? 0 : DebugInformationFormat.Embedded;
+        var emitOptions = new EmitOptions(debugInformationFormat: debugInfoFormat);
         string outputFileName = userSpecificedOutputFileName;
         if (outputFileName == null)
         {
