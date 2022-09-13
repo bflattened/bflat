@@ -206,11 +206,18 @@ internal class BuildCommand : CommandBase
         CSharpCompilation sourceCompilation = ILBuildCommand.CreateCompilation(compiledModuleName, inputFiles, references, defines, optimizationLevel, buildTargetType, targetArchitecture, targetOS);
         createCompilationWatch.Complete();
 
-        PerfWatch getEntryPointWatch = new PerfWatch("GetEntryPoint");
-        bool nativeLib = sourceCompilation.GetEntryPoint(CancellationToken.None) == null;
-        getEntryPointWatch.Complete();
+        bool nativeLib;
         if (buildTargetType == 0)
+        {
+            PerfWatch getEntryPointWatch = new PerfWatch("GetEntryPoint");
+            nativeLib = sourceCompilation.GetEntryPoint(CancellationToken.None) == null;
+            getEntryPointWatch.Complete();
             buildTargetType = nativeLib ? BuildTargetType.Shared : BuildTargetType.Exe;
+        }
+        else
+        {
+            nativeLib = buildTargetType == BuildTargetType.Shared;
+        }
 
         var emitOptions = new EmitOptions(debugInformationFormat: DebugInformationFormat.Embedded);
 

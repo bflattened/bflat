@@ -84,34 +84,40 @@ internal class ILBuildCommand : CommandBase
         string outputFileName = userSpecificedOutputFileName;
         if (outputFileName == null)
         {
-            string suffix = compilation.GetEntryPoint(CancellationToken.None) != null ? ".exe" : ".dll";
+            bool isLibrary = buildTargetType == 0 ?
+                compilation.GetEntryPoint(CancellationToken.None) == null :
+                buildTargetType == BuildTargetType.Shared;
+            string suffix = isLibrary ? ".dll" : ".exe";
             outputFileName = outputNameWithoutSuffix + suffix;
         }
 
-        try
-        {
-            if (File.Exists(outputFileName))
-                File.Delete(outputFileName);
-        }
-        catch { }
+        var resinfos = CommonOptions.GetResourceDescriptions(result.GetValueForOption(CommonOptions.ResourceOption));
 
+        EmitResult compResult;
         using (var fs = File.Create(outputFileName))
         {
-            var resinfos = CommonOptions.GetResourceDescriptions(result.GetValueForOption(CommonOptions.ResourceOption));
-            var compResult = compilation.Emit(fs, manifestResources: resinfos, options: emitOptions);
-            if (!compResult.Success)
+            compResult = compilation.Emit(fs, manifestResources: resinfos, options: emitOptions);
+        }
+
+        if (!compResult.Success)
+        {
+            IEnumerable<Diagnostic> failures = compResult.Diagnostics.Where(diagnostic =>
+                diagnostic.IsWarningAsError ||
+                diagnostic.Severity == DiagnosticSeverity.Error);
+
+            foreach (Diagnostic diagnostic in failures)
             {
-                IEnumerable<Diagnostic> failures = compResult.Diagnostics.Where(diagnostic =>
-                    diagnostic.IsWarningAsError ||
-                    diagnostic.Severity == DiagnosticSeverity.Error);
-
-                foreach (Diagnostic diagnostic in failures)
-                {
-                    Console.Error.WriteLine(diagnostic.ToString());
-                }
-
-                return 1;
+                Console.Error.WriteLine(diagnostic.ToString());
             }
+
+            try
+            {
+                if (File.Exists(outputFileName))
+                    File.Delete(outputFileName);
+            }
+            catch { }
+
+            return 1;
         }
 
         return 0;
