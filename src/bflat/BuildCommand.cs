@@ -70,7 +70,7 @@ internal class BuildCommand : CommandBase
         ArgumentHelpName = "linux|windows"
     };
     
-    private static Option<string> TargetLibcOption = new Option<string>("--libc", "Target libc ('shcrt' or 'none' on Windows)");
+    private static Option<string> TargetLibcOption = new Option<string>("--libc", "Target libc (Windows: shcrt|none, Linux: glibc|bionic)");
 
     private static Option<string> MapFileOption = new Option<string>("--map", "Generate an object map file")
     {
@@ -337,6 +337,8 @@ internal class BuildCommand : CommandBase
             referenceFilePaths[Path.GetFileNameWithoutExtension(reference)] = reference;
         }
 
+        string libc = result.GetValueForOption(TargetLibcOption);
+
         string homePath = CommonOptions.HomePath;
         string libPath = Environment.GetEnvironmentVariable("BFLAT_LIB");
         if (libPath == null)
@@ -345,6 +347,7 @@ internal class BuildCommand : CommandBase
 
             string osPart = targetOS switch
             {
+                TargetOS.Linux when libc == "bionic" => "linux-bionic",
                 TargetOS.Linux => "linux-glibc",
                 TargetOS.Windows => "windows",
                 _ => throw new Exception(targetOS.ToString()),
@@ -489,7 +492,7 @@ internal class BuildCommand : CommandBase
             featureSwitches.Add("System.Resources.UseSystemResourceKeys", true);
         }
 
-        bool disableGlobalization = result.GetValueForOption(NoGlobalizationOption);
+        bool disableGlobalization = result.GetValueForOption(NoGlobalizationOption) || libc == "bionic";
         if (disableGlobalization)
         {
             featureSwitches.Add("System.Globalization.Invariant", true);
@@ -712,7 +715,6 @@ internal class BuildCommand : CommandBase
         }
 
         bool deterministic = result.GetValueForOption(CommonOptions.DeterministicOption);
-        string libc = result.GetValueForOption(TargetLibcOption);
 
         var ldArgs = new StringBuilder();
 
@@ -767,6 +769,7 @@ internal class BuildCommand : CommandBase
                 ldArgs.Append("api-ms-win-crt-multibyte-l1-1-0.lib api-ms-win-crt-math-l1-1-0.lib ");
                 ldArgs.Append("api-ms-win-crt-process-l1-1-0.lib api-ms-win-crt-runtime-l1-1-0.lib api-ms-win-crt-stdio-l1-1-0.lib ");
                 ldArgs.Append("api-ms-win-crt-string-l1-1-0.lib api-ms-win-crt-time-l1-1-0.lib api-ms-win-crt-utility-l1-1-0.lib ");
+                ldArgs.Append("kernel32-supplements.lib ");
             }
             ldArgs.Append("/opt:ref,icf /nodefaultlib:libcpmt.lib ");
         }
@@ -782,19 +785,40 @@ internal class BuildCommand : CommandBase
                     firstLib = lpath;
             }
 
-            ldArgs.Append("-z now -z relro --hash-style=gnu --eh-frame-hdr ");
+            ldArgs.Append("-z now -z relro -z noexecstack --hash-style=gnu --eh-frame-hdr ");
+            if (libc == "bionic")
+                ldArgs.Append("-EL --fix-cortex-a53-843419 --warn-shared-textrel -z max-page-size=4096 --enable-new-dtags ");
+
             if (buildTargetType != BuildTargetType.Shared)
             {
-                ldArgs.Append("-dynamic-linker /lib64/ld-linux-x86-64.so.2 ");
-                ldArgs.Append($"\"{firstLib}/Scrt1.o\" ");
+                if (libc == "bionic")
+                {
+                    ldArgs.Append("-dynamic-linker /system/bin/linker64 ");
+                    ldArgs.Append($"\"{firstLib}/crtbegin_dynamic.o\" ");
+                }
+                else
+                {
+                    ldArgs.Append("-dynamic-linker /lib64/ld-linux-x86-64.so.2 ");
+                    ldArgs.Append($"\"{firstLib}/Scrt1.o\" ");
+                }
                 if (bare)
                     ldArgs.Append("--defsym=main=__managed__Main ");
+            }
+            else
+            {
+                if (libc == "bionic")
+                {
+                    ldArgs.Append($"\"{firstLib}/crtbegin_so.o\" ");
+                }
             }
 
             ldArgs.AppendFormat("-o \"{0}\" ", outputFilePath);
 
-            ldArgs.Append($"\"{firstLib}/crti.o\" ");
-            ldArgs.Append($"\"{firstLib}/crtbeginS.o\" ");
+            if (libc != "bionic")
+            {
+                ldArgs.Append($"\"{firstLib}/crti.o\" ");
+                ldArgs.Append($"\"{firstLib}/crtbeginS.o\" ");
+            }
 
             ldArgs.Append('"');
             ldArgs.Append(objectFilePath);
@@ -822,11 +846,33 @@ internal class BuildCommand : CommandBase
             }
 
             if (!bare)
-                ldArgs.Append("-lRuntime.WorkstationGC -lSystem.Native -lSystem.Globalization.Native -lSystem.IO.Compression.Native -lSystem.Net.Security.Native -lSystem.Security.Cryptography.Native.OpenSsl ");
+            {
+                ldArgs.Append("-lstdc++compat -lRuntime.WorkstationGC -lSystem.Native -lSystem.IO.Compression.Native -lSystem.Security.Cryptography.Native.OpenSsl ");
+                if (libc != "bionic")
+                    ldArgs.Append("-lSystem.Globalization.Native -lSystem.Net.Security.Native ");
+            }
+                
 
-            ldArgs.Append("--as-needed -lstdc++ -ldl -lm -lz -lgssapi_krb5 -lrt -z relro -z now --discard-all --gc-sections -lgcc --as-needed -lgcc_s --no-as-needed -lpthread -lc -lgcc --as-needed -lgcc_s ");
-            ldArgs.Append($"\"{firstLib}/crtendS.o\" ");
-            ldArgs.Append($"\"{firstLib}/crtn.o\" ");
+            ldArgs.Append("--as-needed -ldl -lm -lz -z relro -z now --discard-all --gc-sections -lgcc -lc -lgcc ");
+            if (libc != "bionic")
+                ldArgs.Append("-lrt --as-needed -lgcc_s --no-as-needed -lpthread ");
+
+            if (libc == "bionic")
+            {
+                if (buildTargetType == BuildTargetType.Shared)
+                {
+                    ldArgs.Append($"\"{firstLib}/crtend_so.o\" ");
+                }
+                else
+                {
+                    ldArgs.Append($"\"{firstLib}/crtend_android.o\" ");
+                }
+            }
+            else
+            {
+                ldArgs.Append($"\"{firstLib}/crtendS.o\" ");
+                ldArgs.Append($"\"{firstLib}/crtn.o\" ");
+            }
         }
 
         ldArgs.AppendJoin(' ', result.GetValueForOption(LdFlagsOption));
