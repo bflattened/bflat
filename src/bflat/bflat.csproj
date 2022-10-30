@@ -6,13 +6,14 @@
     <TargetFramework>net6.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Version Condition="'$(Version)' == ''">42.42.42.42</Version>
+    <SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <PropertyGroup>
-    <RuntimeVersion>7.0.0-rc.2.22452.1</RuntimeVersion>
+    <RuntimeVersion>7.0.0-rtm.22529.1</RuntimeVersion>
     <RuntimeUri>https://github.com/bflattened/runtime/releases/download/</RuntimeUri>
 
-    <BlobsVersion>1.1</BlobsVersion>
+    <BlobsVersion>1.2</BlobsVersion>
     <BlobsUri>https://github.com/bflattened/blobs/releases/download/</BlobsUri>
 
     <MicrosoftCodeAnalysisCSharpVersion>4.4.0-1.final</MicrosoftCodeAnalysisCSharpVersion>
@@ -55,6 +56,7 @@
   <ItemGroup>
     <SupportedTarget Include="windows-x64" />
     <SupportedTarget Include="linux-glibc-x64" />
+    <SupportedTarget Include="linux-bionic-arm64" />
   </ItemGroup>
 
   <ItemGroup>
