@@ -124,6 +124,7 @@
            DestinationFolder="$(OutputPath)" />
     
     <Exec Command="chmod +x $(OutputPath)bin/lld" Condition="'$(OS)' != 'Windows_NT' and $(CompilerHost.StartsWith('linux'))" />
+    <Exec Command="chmod +x $(OutputPath)bin/llvm-objcopy" Condition="'$(OS)' != 'Windows_NT' and $(CompilerHost.StartsWith('linux'))" />
 
     <Touch Files="$(IntermediateOutputPath)\compiler-$(CompilerHost)-$(BlobsVersion).semaphore"
            AlwaysCreate="true" />
