@@ -40,12 +40,12 @@ jobs:
         run: |
           mv layouts/windows-x64/bflat.pdb layouts/obj/windows-x64/
           mv layouts/windows-arm64/bflat.pdb layouts/obj/windows-arm64/
-          objcopy --only-keep-debug layouts/linux-glibc-x64/bflat layouts/obj/linux-glibc-x64/bflat.dwo
-          strip --strip-debug --strip-unneeded layouts/linux-glibc-x64/bflat
-          objcopy --add-gnu-debuglink=layouts/obj/linux-glibc-x64/bflat.dwo layouts/linux-glibc-x64/bflat
-          objcopy --only-keep-debug layouts/linux-glibc-arm64/bflat layouts/obj/linux-glibc-arm64/bflat.dwo
-          strip --strip-debug --strip-unneeded layouts/linux-glibc-arm64/bflat
-          objcopy --add-gnu-debuglink=layouts/obj/linux-glibc-arm64/bflat.dwo layouts/linux-glibc-arm64/bflat
+          llvm-objcopy --only-keep-debug layouts/linux-glibc-x64/bflat layouts/obj/linux-glibc-x64/bflat.dwo
+          llvm-objcopy --strip-debug --strip-unneeded layouts/linux-glibc-x64/bflat
+          llvm-objcopy --add-gnu-debuglink=layouts/obj/linux-glibc-x64/bflat.dwo layouts/linux-glibc-x64/bflat
+          llvm-objcopy --only-keep-debug layouts/linux-glibc-arm64/bflat layouts/obj/linux-glibc-arm64/bflat.dwo
+          llvm-objcopy --strip-debug --strip-unneeded layouts/linux-glibc-arm64/bflat
+          llvm-objcopy --add-gnu-debuglink=layouts/obj/linux-glibc-arm64/bflat.dwo layouts/linux-glibc-arm64/bflat
       - name: Create archives
         run: |
           (cd layouts/windows-x64 && zip -r ../windows-x64.zip .)
