@@ -47,7 +47,15 @@
       <OS>windows</OS>
       <Arch>x64</Arch>
     </SupportedHost>
+    <SupportedHost Include="windows-arm64">
+      <OS>windows</OS>
+      <Arch>arm64</Arch>
+    </SupportedHost>
     <SupportedHost Include="linux-glibc-x64">
+      <OS>linux</OS>
+      <Arch>x64</Arch>
+    </SupportedHost>
+    <SupportedHost Include="linux-glibc-arm64">
       <OS>linux</OS>
       <Arch>x64</Arch>
     </SupportedHost>
@@ -55,7 +63,9 @@
 
   <ItemGroup>
     <SupportedTarget Include="windows-x64" />
+    <SupportedTarget Include="windows-arm64" />
     <SupportedTarget Include="linux-glibc-x64" />
+    <SupportedTarget Include="linux-glibc-arm64" />
     <SupportedTarget Include="linux-bionic-arm64" />
   </ItemGroup>
 

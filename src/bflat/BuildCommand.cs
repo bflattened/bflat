@@ -786,8 +786,12 @@ internal class BuildCommand : CommandBase
             }
 
             ldArgs.Append("-z now -z relro -z noexecstack --hash-style=gnu --eh-frame-hdr ");
+            
+            if (targetArchitecture == TargetArchitecture.ARM64)
+                ldArgs.Append("-EL --fix-cortex-a53-843419 ");
+            
             if (libc == "bionic")
-                ldArgs.Append("-EL --fix-cortex-a53-843419 --warn-shared-textrel -z max-page-size=4096 --enable-new-dtags ");
+                ldArgs.Append("--warn-shared-textrel -z max-page-size=4096 --enable-new-dtags ");
 
             if (buildTargetType != BuildTargetType.Shared)
             {
@@ -798,7 +802,10 @@ internal class BuildCommand : CommandBase
                 }
                 else
                 {
-                    ldArgs.Append("-dynamic-linker /lib64/ld-linux-x86-64.so.2 ");
+                    if (targetArchitecture == TargetArchitecture.ARM64)
+                        ldArgs.Append("-dynamic-linker /lib/ld-linux-aarch64.so.1 ");
+                    else
+                        ldArgs.Append("-dynamic-linker /lib64/ld-linux-x86-64.so.2 ");
                     ldArgs.Append($"\"{firstLib}/Scrt1.o\" ");
                 }
                 if (bare)
