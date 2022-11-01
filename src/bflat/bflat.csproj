@@ -190,6 +190,9 @@
       <BflatArg Include="@(Compile->'&quot;%(Identity)&quot;')" />
       <BflatArg Include="--os:%(SupportedHost.OS)" />
       <BflatArg Include="--arch:%(SupportedHost.Arch)" />
+      <BflatArg Include="--no-globalization" />
+      <BflatArg Include="--no-exception-messages" />
+      <BflatArg Include="--no-pie" />
       <BflatArg Include="-o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\$(BflatName)&quot;" />
       <BflatArg Include="@(RuntimeCopyLocalItems->'-r:&quot;%(Identity)&quot;')" />
     </ItemGroup>

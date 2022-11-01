@@ -47,10 +47,13 @@ internal class BuildCommand : CommandBase
     private static Option<bool> NoStackTraceDataOption = new Option<bool>("--no-stacktrace-data", "Disable support for textual stack traces");
     private static Option<bool> NoGlobalizationOption = new Option<bool>("--no-globalization", "Disable support for globalization (use invariant mode)");
     private static Option<bool> NoExceptionMessagesOption = new Option<bool>("--no-exception-messages", "Disable exception messages");
+    private static Option<bool> NoPieOption = new Option<bool>("--no-pie", "Do not generate position independent executable");
 
     private static Option<bool> NoLinkOption = new Option<bool>("-c", "Produce object file, but don't run linker");
     private static Option<string[]> LdFlagsOption = new Option<string[]>(new string[] { "--ldflags" }, "Arguments to pass to the linker");
     private static Option<bool> PrintCommandsOption = new Option<bool>("-x", "Print the commands");
+
+    private static Option<bool> SeparateSymbolsOption = new Option<bool>("--separate-symbols", "Separate debugging symbols (Linux)");
 
     private static Option<string[]> DirectPInvokesOption = new Option<string[]>("-i", "Bind to entrypoint statically")
     {
@@ -104,6 +107,8 @@ internal class BuildCommand : CommandBase
             NoStackTraceDataOption,
             NoGlobalizationOption,
             NoExceptionMessagesOption,
+            NoPieOption,
+            SeparateSymbolsOption,
             CommonOptions.NoDebugInfoOption,
             MapFileOption,
             DirectPInvokesOption,
@@ -743,6 +748,9 @@ internal class BuildCommand : CommandBase
                     ldArgs.Append("/entry:wmainCRTStartup bootstrapper.lib ");
                 else
                     ldArgs.Append("/entry:__managed__Main ");
+
+                if (result.GetValueForOption(NoPieOption))
+                    ldArgs.Append("/fixed ");
             }
             else if (buildTargetType is BuildTargetType.Shared)
             {
@@ -849,7 +857,9 @@ internal class BuildCommand : CommandBase
             {
                 if (!bare)
                     ldArgs.Append("-lbootstrapper ");
-                ldArgs.Append("-pie ");
+
+                if (!result.GetValueForOption(NoPieOption))
+                    ldArgs.Append("-pie ");
             }
 
             if (!bare)
@@ -884,22 +894,52 @@ internal class BuildCommand : CommandBase
 
         ldArgs.AppendJoin(' ', result.GetValueForOption(LdFlagsOption));
 
-        if (result.GetValueForOption(PrintCommandsOption))
+        bool printCommands = result.GetValueForOption(PrintCommandsOption);
+
+        static int RunCommand(string command, string args, bool print)
         {
-            Console.WriteLine($"{ld} {ldArgs}");
+            if (print)
+            {
+                Console.WriteLine($"{command} {args}");
+            }
+
+            var p = Process.Start(command, args);
+            p.WaitForExit();
+            return p.ExitCode;
         }
 
         PerfWatch linkWatch = new PerfWatch("Link");
-        var p = Process.Start(ld, ldArgs.ToString());
-        p.WaitForExit();
+        int exitCode = RunCommand(ld, ldArgs.ToString(), printCommands);
         linkWatch.Complete();
-
-        int linkerExitCode = p.ExitCode;
 
         try { File.Delete(objectFilePath); } catch { }
         if (exportsFile != null)
             try { File.Delete(exportsFile); } catch { }
 
-        return linkerExitCode;
+        if (exitCode == 0
+            && targetOS != TargetOS.Windows
+            && result.GetValueForOption(SeparateSymbolsOption))
+        {
+            if (logger.IsVerbose)
+                logger.LogMessage("Running objcopy");
+
+            string objcopy = Environment.GetEnvironmentVariable("BFLAT_OBJCOPY");
+            if (objcopy == null)
+            {
+                string toolSuffix = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ".exe" : "";
+                objcopy = Path.Combine(homePath, "bin", "llvm-objcopy" + toolSuffix);
+            }
+
+            PerfWatch objCopyWatch = new PerfWatch("Objcopy");
+            exitCode = RunCommand(objcopy, $"--only-keep-debug \"{outputFilePath}\" \"{outputFilePath}.dwo\"", printCommands);
+            if (exitCode != 0) return exitCode;
+            RunCommand(objcopy, $"--strip-debug --strip-unneeded \"{outputFilePath}\"", printCommands);
+            if (exitCode != 0) return exitCode;
+            RunCommand(objcopy, $"--add-gnu-debuglink=\"{outputFilePath}.dwo\" \"{outputFilePath}\"", printCommands);
+            if (exitCode != 0) return exitCode;
+            objCopyWatch.Complete();
+        }
+
+        return exitCode;
     }
 }
