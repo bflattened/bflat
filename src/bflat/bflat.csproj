@@ -57,7 +57,7 @@
     </SupportedHost>
     <SupportedHost Include="linux-glibc-arm64">
       <OS>linux</OS>
-      <Arch>x64</Arch>
+      <Arch>arm64</Arch>
     </SupportedHost>
   </ItemGroup>
 
