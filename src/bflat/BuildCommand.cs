@@ -749,7 +749,7 @@ internal class BuildCommand : CommandBase
                 else
                     ldArgs.Append("/entry:__managed__Main ");
 
-                if (result.GetValueForOption(NoPieOption))
+                if (result.GetValueForOption(NoPieOption) && targetArchitecture != TargetArchitecture.ARM64)
                     ldArgs.Append("/fixed ");
             }
             else if (buildTargetType is BuildTargetType.Shared)
