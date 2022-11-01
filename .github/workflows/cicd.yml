@@ -32,22 +32,32 @@ jobs:
           dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/bflattened/index.json"
       - name: Build (CI)
         if: ${{ github.event.inputs.version == '' }}
-        run: dotnet build src/bflat/bflat.csproj -t:BuildLayouts
+        run: dotnet build src/bflat/bflat.csproj -t:BuildLayouts -c:Release
       - name: Build (CD)
         if: ${{ github.event.inputs.version != '' }}
-        run: dotnet build src/bflat/bflat.csproj -t:BuildLayouts -p:Version=${{ github.event.inputs.version }}
+        run: dotnet build src/bflat/bflat.csproj -t:BuildLayouts -c:Release -p:Version=${{ github.event.inputs.version }}
       - name: Prepare symbols
         run: |
           mv layouts/windows-x64/bflat.pdb layouts/obj/windows-x64/
-          objcopy --only-keep-debug layouts/linux-glibc-x64/bflat layouts/obj/linux-glibc-x64/bflat.dwo
-          strip --strip-debug --strip-unneeded layouts/linux-glibc-x64/bflat
-          objcopy --add-gnu-debuglink=layouts/obj/linux-glibc-x64/bflat.dwo layouts/linux-glibc-x64/bflat
+          mv layouts/windows-arm64/bflat.pdb layouts/obj/windows-arm64/
+          sudo apt-get update
+          sudo apt-get install llvm
+          llvm-objcopy --only-keep-debug layouts/linux-glibc-x64/bflat layouts/obj/linux-glibc-x64/bflat.dwo
+          llvm-objcopy --strip-debug --strip-unneeded layouts/linux-glibc-x64/bflat
+          llvm-objcopy --add-gnu-debuglink=layouts/obj/linux-glibc-x64/bflat.dwo layouts/linux-glibc-x64/bflat
+          llvm-objcopy --only-keep-debug layouts/linux-glibc-arm64/bflat layouts/obj/linux-glibc-arm64/bflat.dwo
+          llvm-objcopy --strip-debug --strip-unneeded layouts/linux-glibc-arm64/bflat
+          llvm-objcopy --add-gnu-debuglink=layouts/obj/linux-glibc-arm64/bflat.dwo layouts/linux-glibc-arm64/bflat
       - name: Create archives
         run: |
           (cd layouts/windows-x64 && zip -r ../windows-x64.zip .)
+          (cd layouts/windows-arm64 && zip -r ../windows-arm64.zip .)
           zip -j layouts/windows-x64-symbols.zip layouts/obj/windows-x64/bflat.pdb
+          zip -j layouts/windows-arm64-symbols.zip layouts/obj/windows-arm64/bflat.pdb
           tar -C layouts/linux-glibc-x64/ -czvf layouts/linux-glibc-x64.tar.gz .
           tar -C layouts/obj/linux-glibc-x64/ -czvf layouts/linux-glibc-x64-symbols.tar.gz bflat.dwo
+          tar -C layouts/linux-glibc-arm64/ -czvf layouts/linux-glibc-arm64.tar.gz .
+          tar -C layouts/obj/linux-glibc-arm64/ -czvf layouts/linux-glibc-arm64-symbols.tar.gz bflat.dwo
       - name: Archive windows-x64 hosted compiler
         uses: actions/upload-artifact@v2
         with:
@@ -58,6 +68,16 @@ jobs:
         with:
           name: debugsymbols-bflat-windows-x64.zip
           path: layouts/windows-x64-symbols.zip
+      - name: Archive windows-arm64 hosted compiler
+        uses: actions/upload-artifact@v2
+        with:
+          name: bflat-windows-arm64.zip
+          path: layouts/windows-arm64.zip
+      - name: Archive windows-arm64 hosted compiler symbols
+        uses: actions/upload-artifact@v2
+        with:
+          name: debugsymbols-bflat-windows-arm64.zip
+          path: layouts/windows-arm64-symbols.zip
       - name: Archive linux-glibc-x64 hosted compiler
         uses: actions/upload-artifact@v2
         with:
@@ -68,6 +88,16 @@ jobs:
         with:
           name: debugsymbols-bflat-linux-glibc-x64.zip
           path: layouts/linux-glibc-x64-symbols.tar.gz
+      - name: Archive linux-glibc-arm64 hosted compiler
+        uses: actions/upload-artifact@v2
+        with:
+          name: bflat-linux-glibc-arm64.zip
+          path: layouts/linux-glibc-arm64.tar.gz
+      - name: Archive linux-glibc-arm64 hosted compiler symbols
+        uses: actions/upload-artifact@v2
+        with:
+          name: debugsymbols-bflat-linux-glibc-arm64.zip
+          path: layouts/linux-glibc-arm64-symbols.tar.gz
 
       - name: Run tests
         if: ${{ github.event.inputs.version == '' }}
@@ -110,6 +140,27 @@ jobs:
           asset_path: layouts/windows-x64-symbols.zip
           asset_name: bflat-${{ github.event.inputs.version }}-windows-x64-debugsymbols.zip
           asset_content_type: application/zip
+          
+      - name: Upload windows-arm64 hosted compiler
+        if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: layouts/windows-arm64.zip
+          asset_name: bflat-${{ github.event.inputs.version }}-windows-arm64.zip
+          asset_content_type: application/zip
+      - name: Upload windows-arm64 hosted compiler symbols
+        if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky'}}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: layouts/windows-arm64-symbols.zip
+          asset_name: bflat-${{ github.event.inputs.version }}-windows-arm64-debugsymbols.zip
+          asset_content_type: application/zip
   
       - name: Upload linux-glibc-x64 hosted compiler
         if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky' }}
@@ -130,4 +181,25 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: layouts/linux-glibc-x64-symbols.tar.gz
           asset_name: bflat-${{ github.event.inputs.version }}-linux-glibc-x64-debugsymbols.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload linux-glibc-arm64 hosted compiler
+        if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: layouts/linux-glibc-arm64.tar.gz
+          asset_name: bflat-${{ github.event.inputs.version }}-linux-glibc-arm64.tar.gz
+          asset_content_type: application/gzip
+      - name: Upload linux-glibc-arm64 hosted compiler symbols
+        if: ${{ github.event.inputs.version != '' && github.actor == 'MichalStrehovsky' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: layouts/linux-glibc-arm64-symbols.tar.gz
+          asset_name: bflat-${{ github.event.inputs.version }}-linux-glibc-arm64-debugsymbols.tar.gz
           asset_content_type: application/gzip
