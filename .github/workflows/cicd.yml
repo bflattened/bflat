@@ -40,6 +40,8 @@ jobs:
         run: |
           mv layouts/windows-x64/bflat.pdb layouts/obj/windows-x64/
           mv layouts/windows-arm64/bflat.pdb layouts/obj/windows-arm64/
+          sudo apt-get update
+          sudo apt-get install llvm
           llvm-objcopy --only-keep-debug layouts/linux-glibc-x64/bflat layouts/obj/linux-glibc-x64/bflat.dwo
           llvm-objcopy --strip-debug --strip-unneeded layouts/linux-glibc-x64/bflat
           llvm-objcopy --add-gnu-debuglink=layouts/obj/linux-glibc-x64/bflat.dwo layouts/linux-glibc-x64/bflat
