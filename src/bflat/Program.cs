@@ -16,7 +16,9 @@
 
 using System;
 using System.CommandLine;
+using System.CommandLine.Builder;
 using System.CommandLine.Help;
+using System.CommandLine.Parsing;
 using System.Reflection;
 
 class Program
@@ -62,12 +64,17 @@ class Program
             }
         });
 
+        Parser parser = new CommandLineBuilder(root)
+                .UseVersionOption("-v")
+                .UseParseErrorReporting()
+                .Build();
+
 #if DEBUG
-        return root.Invoke(args);
+        return parser.Invoke(args);
 #else
         try
         {
-            return root.Invoke(args);
+            return parser.Invoke(args);
         }
         catch (Exception e)
         {
