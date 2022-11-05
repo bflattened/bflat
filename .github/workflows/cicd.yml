@@ -36,6 +36,12 @@ jobs:
       - name: Build (CD)
         if: ${{ github.event.inputs.version != '' }}
         run: dotnet build src/bflat/bflat.csproj -t:BuildLayouts -c:Release -p:Version=${{ github.event.inputs.version }}
+      - name: Debloat the libs
+        run: |
+          dotnet run --project src/debloat/debloat.csproj layouts/windows-x64/lib
+          dotnet run --project src/debloat/debloat.csproj layouts/windows-arm64/lib
+          dotnet run --project src/debloat/debloat.csproj layouts/linux-glibc-x64/lib
+          dotnet run --project src/debloat/debloat.csproj layouts/linux-glibc-arm64/lib
       - name: Prepare symbols
         run: |
           mv layouts/windows-x64/bflat.pdb layouts/obj/windows-x64/
