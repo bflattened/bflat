@@ -13,7 +13,7 @@
     <RuntimeVersion>7.0.0-rtm.22529.1</RuntimeVersion>
     <RuntimeUri>https://github.com/bflattened/runtime/releases/download/</RuntimeUri>
 
-    <BlobsVersion>1.2</BlobsVersion>
+    <BlobsVersion>1.3</BlobsVersion>
     <BlobsUri>https://github.com/bflattened/blobs/releases/download/</BlobsUri>
 
     <MicrosoftCodeAnalysisCSharpVersion>4.4.0-1.final</MicrosoftCodeAnalysisCSharpVersion>
@@ -62,11 +62,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <SupportedTarget Include="windows-x64" />
-    <SupportedTarget Include="windows-arm64" />
-    <SupportedTarget Include="linux-glibc-x64" />
-    <SupportedTarget Include="linux-glibc-arm64" />
-    <SupportedTarget Include="linux-bionic-arm64" />
+    <SupportedTarget Include="windows-x64">
+      <LibPath>windows\x64\</LibPath>
+    </SupportedTarget>
+    <SupportedTarget Include="windows-arm64">
+      <LibPath>windows\arm64\</LibPath>
+    </SupportedTarget>
+    <SupportedTarget Include="linux-glibc-x64">
+      <LibPath>linux\x64\glibc\</LibPath>
+    </SupportedTarget>
+    <SupportedTarget Include="linux-glibc-arm64">
+      <LibPath>linux\arm64\glibc</LibPath>
+    </SupportedTarget>
+    <SupportedTarget Include="linux-bionic-arm64">
+      <LibPath>linux\arm64\bionic</LibPath>
+    </SupportedTarget>
   </ItemGroup>
 
   <ItemGroup>
@@ -146,7 +156,7 @@
           Outputs="@(SupportedTarget->'$(IntermediateOutputPath)\bflat-libs-%(Identity)-$(RuntimeVersion).semaphore')">
 
     <Unzip SourceFiles="$(DownloadCachePath)bflat-libs-%(SupportedTarget.Identity)-$(RuntimeVersion).zip"
-           DestinationFolder="$(OutputPath)lib\%(SupportedTarget.Identity)" />
+           DestinationFolder="$(OutputPath)lib\%(SupportedTarget.LibPath)" />
 
     <Touch Files="$(IntermediateOutputPath)\bflat-libs-%(SupportedTarget.Identity)-$(RuntimeVersion).semaphore"
            AlwaysCreate="true" />

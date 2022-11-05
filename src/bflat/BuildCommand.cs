@@ -350,13 +350,18 @@ internal class BuildCommand : CommandBase
         {
             char separator = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ';' : ':';
 
+            string currentLibPath = Path.Combine(homePath, "lib");
+
+            libPath = currentLibPath;
+
             string osPart = targetOS switch
             {
-                TargetOS.Linux when libc == "bionic" => "linux-bionic",
-                TargetOS.Linux => "linux-glibc",
+                TargetOS.Linux => "linux",
                 TargetOS.Windows => "windows",
                 _ => throw new Exception(targetOS.ToString()),
             };
+            currentLibPath = Path.Combine(currentLibPath, osPart);
+            libPath = currentLibPath + separator + libPath;
 
             string archPart = targetArchitecture switch
             {
@@ -364,15 +369,20 @@ internal class BuildCommand : CommandBase
                 TargetArchitecture.X64 => "x64",
                 _ => throw new Exception(targetArchitecture.ToString()),
             };
+            currentLibPath = Path.Combine(currentLibPath, archPart);
+            libPath = currentLibPath + separator + libPath;
 
-            string osArchPath = Path.Combine(homePath, "lib", $"{osPart}-{archPart}");
-            if (!Directory.Exists(osArchPath))
+            if (targetOS == TargetOS.Linux)
             {
-                Console.Error.WriteLine($"Directory '{osArchPath}' doesn't exist.");
-                return 1;
+                currentLibPath = Path.Combine(currentLibPath, libc ?? "glibc");
+                libPath = currentLibPath + separator + libPath;
             }
 
-            libPath = String.Concat(osArchPath, separator.ToString(), Path.Combine(homePath, "lib"));
+            if (!Directory.Exists(currentLibPath))
+            {
+                Console.Error.WriteLine($"Directory '{currentLibPath}' doesn't exist.");
+                return 1;
+            }
         }
 
         if (!bare)
