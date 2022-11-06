@@ -19,10 +19,11 @@ bflat merges the two components together into a single ahead of time crosscompil
 
 bflat can currently target:
 
-* x64 glibc-based Linux
-* x64 Windows
+* x64/arm64 glibc-based Linux (2.27 or later, maps to e.g. Ubuntu 18 or later)
+* arm64 bionic-based Linux (Android API level 21)
+* x64/arm64 Windows (Windows 7 or later)
 
-Support for ARM64 and musl-based Linux is in the works.
+Support for musl-based Linux is in the works.
 
 bflat can either produce native executables, or native shared libraries that can be called from other languages through FFI.
 
@@ -93,11 +94,11 @@ Current stack frame is ms!<BaseAddress>+0xb82d4 at offset 340 in file:line:colum
 
 With all options turned on, one can comfortably fit useful programs under 1 MB. The above program is 735 kB on Windows at the time of writing this. The output executables are executables like any other. You can use a tool like UPX to compress them further (to ~300 kB range).
 
-If you're on a Unix-like system, you might want to run `strip` tool to remove debug information from the executable. Windows places the debug information in a separate PDB file and `strip` is not needed.
+If you're targeting a Unix-like system, you might want to pass `--separate-symbols` to place debug information into a separate file (debug information is big!). This is not needed on Windows because the platform convention is to place debug information in a separate PDB file already.
 
 ## 🎸 Preprocessor definitions
 
-Besides the preprocessor definitions provided at the command line, bflat defines several other symbols: `BFLAT` (defined always), `DEBUG` (defined when not optimizing), `WINDOWS`/`LINUX`/`MACOS` (when the corresponding operating system is the target), `X86`/`X64`/`ARM`/`ARM64` (when the corresponding architecture is targeted).
+Besides the preprocessor definitions provided at the command line, bflat defines several other symbols: `BFLAT` (defined always), `DEBUG` (defined when not optimizing), `WINDOWS`/`LINUX` (when the corresponding operating system is the target), `X64`/`ARM64` (when the corresponding architecture is targeted).
 
 ## 🎹 Debugging bflat apps
 
