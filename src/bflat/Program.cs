@@ -67,6 +67,7 @@ class Program
         Parser parser = new CommandLineBuilder(root)
                 .UseVersionOption("-v")
                 .UseParseErrorReporting()
+                .UseHelp()
                 .Build();
 
 #if DEBUG
