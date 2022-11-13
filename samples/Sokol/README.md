@@ -13,10 +13,10 @@ $ bflat build triangle.cs --target:winexe
 You can also build it as:
 
 ```console
-$ bflat build triangle.cs --no-reflection --no-stacktrace-data --no-globalization --no-exception-messages --Os --target:winexe
+$ bflat build triangle.cs --target:winexe --no-reflection --no-stacktrace-data --no-globalization --no-exception-messages -Os --no-pie --separate-symbols
 ```
 
-On Windows, this will generate a small, ~720 kB executable.
+On Windows, this will generate a small, ~790 kB executable.
 
 To build the audio sample:
 
