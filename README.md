@@ -19,7 +19,7 @@ bflat merges the two components together into a single ahead of time crosscompil
 
 bflat can currently target:
 
-* x64/arm64 glibc-based Linux (2.27 or later, maps to e.g. Ubuntu 18 or later)
+* x64/arm64 glibc-based Linux (2.17 or later on x64 (~CentOS 7), or 2.27 or later on arm64 (~Ubuntu 18.04))
 * arm64 bionic-based Linux (Android API level 21)
 * x64/arm64 Windows (Windows 7 or later)
 
