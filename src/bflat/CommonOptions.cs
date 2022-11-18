@@ -34,9 +34,9 @@ internal static class CommonOptions
         new Option<bool>("--verbose",
             "Enable verbose logging");
 
-    public static Option<bool> BareOption =
-        new Option<bool>("--bare",
-            "Do not include standard library");
+    public static Option<StandardLibType> StdLibOption =
+        new Option<StandardLibType>("--stdlib",
+            "C# standard library to use");
 
     public static Option<bool> DeterministicOption =
         new Option<bool>("--deterministic",
@@ -92,14 +92,26 @@ internal static class CommonOptions
         return Directory.EnumerateFiles(Directory.GetCurrentDirectory(), "*.cs", SearchOption.AllDirectories).ToArray();
     }
 
-    public static string[] GetReferencePaths(string[] referencePaths, bool bare)
+    public static string[] GetReferencePaths(string[] referencePaths, StandardLibType stdlib)
     {
-        if (bare)
+        if (stdlib == StandardLibType.None)
             return referencePaths;
 
         List<string> result = new List<string>(referencePaths);
         string refPath = Path.Combine(HomePath, "ref");
-        result.AddRange(Directory.GetFiles(refPath, "*.dll"));
+        if (stdlib == StandardLibType.Zero)
+        {
+            result.Add(Path.Combine(refPath, "zerolib.dll"));
+        }
+        else
+        {
+            foreach (var f in Directory.GetFiles(refPath, "*.dll"))
+            {
+                if (f.EndsWith("zerolib.dll"))
+                    continue;
+                result.Add(f);
+            }
+        }
         return result.ToArray();
     }
 
@@ -130,4 +142,11 @@ public enum BuildTargetType
     Exe = 1,
     WinExe,
     Shared,
+}
+
+public enum StandardLibType
+{
+    DotNet,
+    None,
+    Zero,
 }

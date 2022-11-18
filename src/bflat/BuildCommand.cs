@@ -114,7 +114,7 @@ internal class BuildCommand : CommandBase
             DirectPInvokesOption,
             FeatureSwitchOption,
             CommonOptions.ResourceOption,
-            CommonOptions.BareOption,
+            CommonOptions.StdLibOption,
             CommonOptions.DeterministicOption,
             CommonOptions.VerbosityOption,
         };
@@ -153,11 +153,11 @@ internal class BuildCommand : CommandBase
         else if (nooptimize)
             optimizationMode = OptimizationMode.None;
 
-        bool bare = result.GetValueForOption(CommonOptions.BareOption);
+        StandardLibType stdlib = result.GetValueForOption(CommonOptions.StdLibOption);
         string[] userSpecifiedInputFiles = result.GetValueForArgument(CommonOptions.InputFilesArgument);
         string[] inputFiles = CommonOptions.GetInputFiles(userSpecifiedInputFiles);
         string[] defines = result.GetValueForOption(CommonOptions.DefinedSymbolsOption);
-        string[] references = CommonOptions.GetReferencePaths(result.GetValueForOption(CommonOptions.ReferencesOption), bare);
+        string[] references = CommonOptions.GetReferencePaths(result.GetValueForOption(CommonOptions.ReferencesOption), stdlib);
 
         TargetOS targetOS;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -316,10 +316,20 @@ internal class BuildCommand : CommandBase
                                                               targetArchitecture);
 
         bool disableReflection = result.GetValueForOption(NoReflectionOption);
-        bool disableStackTraceData = result.GetValueForOption(NoStackTraceDataOption) || bare;
+        bool disableStackTraceData = result.GetValueForOption(NoStackTraceDataOption) || stdlib != StandardLibType.DotNet;
         string systemModuleName = DefaultSystemModule;
-        if (bare && references.Length == 0)
+        if (stdlib == StandardLibType.None && references.Length == 0)
             systemModuleName = compiledModuleName;
+        if (stdlib == StandardLibType.Zero)
+            systemModuleName = "zerolib";
+
+        if (stdlib != StandardLibType.DotNet)
+        {
+            // TODO: need to fix this for `--map`
+            // SettingsTunnel.EmitGCInfo = false;
+            SettingsTunnel.EmitEHInfo = false;
+            SettingsTunnel.EmitGSCookies = false;
+        }
 
         bool supportsReflection = !disableReflection && systemModuleName == DefaultSystemModule;
 
@@ -385,9 +395,11 @@ internal class BuildCommand : CommandBase
             }
         }
 
-        if (!bare)
+        if (stdlib != StandardLibType.None)
         {
-            foreach (var reference in EnumerateExpandedDirectories(libPath, "*.dll"))
+            string mask = stdlib == StandardLibType.DotNet ? "*.dll" : "zerolib.dll";
+
+            foreach (var reference in EnumerateExpandedDirectories(libPath, mask))
             {
                 string assemblyName = Path.GetFileNameWithoutExtension(reference);
                 referenceFilePaths[assemblyName] = reference;
@@ -419,7 +431,7 @@ internal class BuildCommand : CommandBase
         // Build a list of assemblies that have an initializer that needs to run before
         // any user code runs.
         List<ModuleDesc> assembliesWithInitalizers = new List<ModuleDesc>();
-        if (!bare)
+        if (stdlib == StandardLibType.DotNet)
         {
             foreach (string initAssemblyName in initAssemblies)
             {
@@ -473,6 +485,7 @@ internal class BuildCommand : CommandBase
             directPinvokes.Add("System.IO.Compression.Native");
             directPinvokes.Add("System.Globalization.Native");
             directPinvokes.Add("sokol");
+            directPinvokes.Add("shell32!CommandLineToArgvW"); // zerolib uses this
         }
         else
         {
@@ -754,7 +767,7 @@ internal class BuildCommand : CommandBase
 
             if (buildTargetType is BuildTargetType.Exe or BuildTargetType.WinExe)
             {
-                if (!bare)
+                if (stdlib == StandardLibType.DotNet)
                     ldArgs.Append("/entry:wmainCRTStartup bootstrapper.lib ");
                 else
                     ldArgs.Append("/entry:__managed__Main ");
@@ -765,7 +778,7 @@ internal class BuildCommand : CommandBase
             else if (buildTargetType is BuildTargetType.Shared)
             {
                 ldArgs.Append("/dll ");
-                if (!bare)
+                if (stdlib == StandardLibType.DotNet)
                     ldArgs.Append("/include:NativeAOT_StaticInitialization bootstrapperdll.lib ");
                 ldArgs.Append($"/def:\"{exportsFile}\" ");
             }
@@ -773,7 +786,7 @@ internal class BuildCommand : CommandBase
             ldArgs.Append("/incremental:no ");
             if (debugInfoFormat != 0)
                 ldArgs.Append("/debug ");
-            if (!bare)
+            if (stdlib == StandardLibType.DotNet)
             {
                 ldArgs.Append("Runtime.WorkstationGC.lib System.IO.Compression.Native.Aot.lib System.Globalization.Native.Aot.lib ");
             }
@@ -826,7 +839,7 @@ internal class BuildCommand : CommandBase
                         ldArgs.Append("-dynamic-linker /lib64/ld-linux-x86-64.so.2 ");
                     ldArgs.Append($"\"{firstLib}/Scrt1.o\" ");
                 }
-                if (bare)
+                if (stdlib != StandardLibType.DotNet)
                     ldArgs.Append("--defsym=main=__managed__Main ");
             }
             else
@@ -854,7 +867,7 @@ internal class BuildCommand : CommandBase
 
             if (buildTargetType == BuildTargetType.Shared)
             {
-                if (!bare)
+                if (stdlib == StandardLibType.DotNet)
                 {
                     ldArgs.Append("-lbootstrapperdll ");
                     ldArgs.Append("--undefined=NativeAOT_StaticInitialization ");
@@ -865,18 +878,22 @@ internal class BuildCommand : CommandBase
             }
             else
             {
-                if (!bare)
+                if (stdlib == StandardLibType.DotNet)
                     ldArgs.Append("-lbootstrapper ");
 
                 if (!result.GetValueForOption(NoPieOption))
                     ldArgs.Append("-pie ");
             }
 
-            if (!bare)
+            if (stdlib != StandardLibType.None)
             {
-                ldArgs.Append("-lstdc++compat -lRuntime.WorkstationGC -lSystem.Native -lSystem.IO.Compression.Native -lSystem.Security.Cryptography.Native.OpenSsl ");
-                if (libc != "bionic")
-                    ldArgs.Append("-lSystem.Globalization.Native -lSystem.Net.Security.Native ");
+                ldArgs.Append("-lSystem.Native ");
+                if (stdlib == StandardLibType.DotNet)
+                {
+                    ldArgs.Append("-lstdc++compat -lRuntime.WorkstationGC -lSystem.IO.Compression.Native -lSystem.Security.Cryptography.Native.OpenSsl ");
+                    if (libc != "bionic")
+                        ldArgs.Append("-lSystem.Globalization.Native -lSystem.Net.Security.Native ");
+                }
             }
                 
 
