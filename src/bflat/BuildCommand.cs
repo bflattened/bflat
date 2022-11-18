@@ -484,6 +484,7 @@ internal class BuildCommand : CommandBase
             directPinvokes.Add("System.IO.Compression.Native");
             directPinvokes.Add("System.Globalization.Native");
             directPinvokes.Add("sokol");
+            directPinvokes.Add("shell32!CommandLineToArgvW"); // zerolib uses this
         }
         else
         {
