@@ -26,6 +26,14 @@ namespace System
         public static extern long SystemNative_GetTimestamp();
 
         public static long TickCount64 => SystemNative_GetTimestamp() / 1_000_000;
+
+        [DllImport("libSystem.Native")]
+        public static extern void SystemNative_Abort();
+
+        public static void FailFast(string message)
+        {
+            SystemNative_Abort();
+        }
     }
 }
 

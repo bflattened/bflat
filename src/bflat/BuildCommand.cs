@@ -325,7 +325,8 @@ internal class BuildCommand : CommandBase
 
         if (stdlib != StandardLibType.DotNet)
         {
-            SettingsTunnel.EmitGCInfo = false;
+            // TODO: need to fix this for `--map`
+            // SettingsTunnel.EmitGCInfo = false;
             SettingsTunnel.EmitEHInfo = false;
             SettingsTunnel.EmitGSCookies = false;
         }

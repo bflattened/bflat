@@ -48,7 +48,7 @@ namespace System
             get
             {
                 if ((uint)index >= (uint)_length)
-                    Environment.FailFast("Index out of range");
+                    Environment.FailFast(null);
                 return ref Unsafe.Add(ref _reference, (nint)(uint)index);
             }
         }

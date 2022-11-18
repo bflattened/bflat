@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+using System.Runtime;
 using System.Runtime.CompilerServices;
 
 namespace System
@@ -44,11 +45,10 @@ namespace System
             char* cur = ptr;
             while (*cur++ != 0) ;
 
-            char[] result = new char[cur - ptr];
-            result.m_pMethodTable = "".m_pMethodTable;
-            for (int i = 0; i < cur - ptr; i++)
-                result[i] = ptr[i];
-            return Unsafe.As<string>(result);
+            string result = FastNewString((int)(cur - ptr - 1));
+            for (int i = 0; i < cur - ptr - 1; i++)
+                Unsafe.Add(ref result._firstChar, i) = ptr[i];
+            return result;
         }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -59,15 +59,23 @@ namespace System
             sbyte* cur = ptr;
             while (*cur++ != 0) ;
 
-            char[] result = new char[cur - ptr];
-            result.m_pMethodTable = "".m_pMethodTable;
-            for (int i = 0; i < cur - ptr; i++)
+            string result = FastNewString((int)(cur - ptr - 1));
+            for (int i = 0; i < cur - ptr - 1; i++)
             {
                 if (ptr[i] > 0x7F)
-                    Environment.FailFast("Unicode");
-                result[i] = (char)ptr[i];
+                    Environment.FailFast(null);
+                Unsafe.Add(ref result._firstChar, i) = (char)ptr[i];
             }
-            return Unsafe.As<string>(result);
+            return result;
+        }
+
+        static unsafe string FastNewString(int numChars)
+        {
+            return NewString("".m_pMethodTable, numChars);
+
+            [MethodImpl(MethodImplOptions.InternalCall)]
+            [RuntimeImport("*", "RhpNewArray")]
+            static extern string NewString(MethodTable* pMT, int numElements);
         }
     }
 }

@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 
 namespace System
 {
-    public static class Console
+    public static partial class Console
     {
         private enum BOOL : int
         {

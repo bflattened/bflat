@@ -26,6 +26,14 @@ namespace System
         private static extern long GetTickCount64();
 
         public static long TickCount64 => GetTickCount64();
+
+        [DllImport("kernel32")]
+        private static extern void RaiseFailFastException(IntPtr a, IntPtr b, int flags);
+
+        public static void FailFast(string message)
+        {
+            RaiseFailFastException(default, default, default);
+        }
     }
 }
 

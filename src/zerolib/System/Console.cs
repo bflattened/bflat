@@ -40,4 +40,17 @@ namespace System
 
         public readonly ConsoleKey Key;
     }
+
+    public static unsafe partial class Console
+    {
+        public static void WriteLine(string s)
+        {
+            for (int i = 0; i < s.Length; i++)
+                Console.Write(s[i]);
+#if WINDOWS
+            Console.Write('\r');
+#endif
+            Console.Write('\n');
+        }
+    }
 }

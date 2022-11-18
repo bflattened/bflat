@@ -28,7 +28,8 @@ namespace System.Runtime
 
     internal sealed class RuntimeImportAttribute : Attribute
     {
-        public RuntimeImportAttribute(string entry) { }
+        public RuntimeImportAttribute(string lib) { }
+        public RuntimeImportAttribute(string lib, string entry) { }
     }
 
     internal unsafe struct MethodTable
@@ -47,8 +48,8 @@ namespace Internal.Runtime.CompilerHelpers
 {
     class ThrowHelpers
     {
-        static void ThrowIndexOutOfRangeException() => Environment.FailFast("");
-        static void ThrowDivideByZeroException() => Environment.FailFast("");
+        static void ThrowIndexOutOfRangeException() => Environment.FailFast(null);
+        static void ThrowDivideByZeroException() => Environment.FailFast(null);
     }
 
     // A class that the compiler looks for that has helpers to initialize the
@@ -69,7 +70,7 @@ namespace Internal.Runtime.CompilerHelpers
         static void RhpPInvokeReturn(IntPtr frame) { }
 
         [RuntimeExport("RhpFallbackFailFast")]
-        static void RhpFallbackFailFast() { while (true) ; }
+        static void RhpFallbackFailFast() { Environment.FailFast(null); }
 
         [RuntimeExport("RhpNewFast")]
         static unsafe void* RhpNewFast(MethodTable* pMT)
@@ -83,7 +84,7 @@ namespace Internal.Runtime.CompilerHelpers
         static unsafe void* RhpNewArray(MethodTable* pMT, int numElements)
         {
             if (numElements < 0)
-                Environment.FailFast("");
+                Environment.FailFast(null);
 
             MethodTable** result = AllocObject((uint)(pMT->_uBaseSize + numElements * pMT->_usComponentSize));
             *result = pMT;
@@ -107,7 +108,7 @@ namespace Internal.Runtime.CompilerHelpers
                 goto assigningNull;
 
             if (elementType != obj.m_pMethodTable)
-                Environment.FailFast("Covariance");
+                Environment.FailFast(null); /* covariance */
 
 doWrite:
             element = obj;

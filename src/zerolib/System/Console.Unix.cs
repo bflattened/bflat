@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 
 namespace System
 {
-    public static unsafe class Console
+    public static unsafe partial class Console
     {
         public static unsafe string Title
         {
@@ -181,7 +181,7 @@ namespace System
                         {
                             char c = (char)bufPtr[i];
                             if (c > 0x7F)
-                                Environment.FailFast("Reading UTF-8 past 0x7F");
+                                Environment.FailFast(null);
                             s_buffer.Chars[i] = c;
                         }
                     }
@@ -203,7 +203,7 @@ namespace System
                             case 'D':
                                 return new ConsoleKeyInfo(default, ConsoleKey.LeftArrow, false, false, false);
                             default:
-                                Environment.FailFast("Unknown escape");
+                                Environment.FailFast(null);
                                 return default;
                         }
                     }
