@@ -325,10 +325,11 @@ internal class BuildCommand : CommandBase
 
         if (stdlib != StandardLibType.DotNet)
         {
-            // TODO: need to fix this for `--map`
-            // SettingsTunnel.EmitGCInfo = false;
+            SettingsTunnel.EmitGCInfo = false;
             SettingsTunnel.EmitEHInfo = false;
             SettingsTunnel.EmitGSCookies = false;
+            if (debugInfoFormat == 0)
+                SettingsTunnel.EmitUnwindInfo = false;
         }
 
         bool supportsReflection = !disableReflection && systemModuleName == DefaultSystemModule;
@@ -570,6 +571,10 @@ internal class BuildCommand : CommandBase
         var compilerGenerateState = new ILCompiler.Dataflow.CompilerGeneratedState(ilProvider, logger);
         var flowAnnotations = new ILLink.Shared.TrimAnalysis.FlowAnnotations(logger, ilProvider, compilerGenerateState);
 
+        MetadataManagerOptions metadataOptions = default;
+        if (stdlib == StandardLibType.DotNet)
+            metadataOptions |= MetadataManagerOptions.DehydrateData;
+
         MetadataManager metadataManager = new UsageBasedMetadataManager(
             compilationGroup,
             typeSystemContext,
@@ -580,6 +585,7 @@ internal class BuildCommand : CommandBase
             invokeThunkGenerationPolicy,
             flowAnnotations,
             metadataGenerationOptions,
+            metadataOptions,
             logger,
             featureSwitches,
             Array.Empty<string>(),
@@ -789,6 +795,10 @@ internal class BuildCommand : CommandBase
             if (stdlib == StandardLibType.DotNet)
             {
                 ldArgs.Append("Runtime.WorkstationGC.lib System.IO.Compression.Native.Aot.lib System.Globalization.Native.Aot.lib ");
+            }
+            else
+            {
+                ldArgs.Append("/merge:.modules=.rdata ");
             }
             ldArgs.Append("sokol.lib advapi32.lib bcrypt.lib crypt32.lib iphlpapi.lib kernel32.lib mswsock.lib ncrypt.lib normaliz.lib  ntdll.lib ole32.lib oleaut32.lib user32.lib version.lib ws2_32.lib shell32.lib Secur32.Lib ");
 
