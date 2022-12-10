@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 
 namespace System
 {
-    static partial class Environment
+    public static partial class Environment
     {
         [DllImport("kernel32")]
         private static extern long GetTickCount64();

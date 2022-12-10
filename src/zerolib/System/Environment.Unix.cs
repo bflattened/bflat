@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 
 namespace System
 {
-    static partial class Environment
+    public static partial class Environment
     {
         [DllImport("libSystem.Native")]
         public static extern long SystemNative_GetTimestamp();
