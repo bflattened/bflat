@@ -54,6 +54,13 @@ jobs:
           llvm-objcopy --only-keep-debug layouts/linux-glibc-arm64/bflat layouts/obj/linux-glibc-arm64/bflat.dwo
           llvm-objcopy --strip-debug --strip-unneeded layouts/linux-glibc-arm64/bflat
           llvm-objcopy --add-gnu-debuglink=layouts/obj/linux-glibc-arm64/bflat.dwo layouts/linux-glibc-arm64/bflat
+      - name: Inject license
+        if: ${{ github.event.inputs.version != '' }}
+        run: |
+          cp .github/official-release-license.tmp layouts/windows-x64/LICENSE.TXT
+          cp .github/official-release-license.tmp layouts/windows-arm64/LICENSE.TXT
+          cp .github/official-release-license.tmp layouts/linux-glibc-x64/LICENSE.TXT
+          cp .github/official-release-license.tmp layouts/linux-glibc-arm64/LICENSE.TXT
       - name: Create archives
         run: |
           (cd layouts/windows-x64 && zip -r ../windows-x64.zip .)
