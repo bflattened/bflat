@@ -33,6 +33,8 @@ Look at the [Releases tab](https://github.com/bflattened/bflat/releases) of this
 
 Unzip the archive to a convenient location and add the root to your PATH. You're all set. See the samples directory for a couple samples.
 
+The binary releases are licensed under the MIT license.
+
 ## 🎷 I don't see dotnet, MSBuild, or NuGet
 
 That's the point. bflat is to dotnet as VS Code is to VS.
