@@ -39,6 +39,16 @@ namespace Internal.Runtime.CompilerHelpers
 
             while (true) ;
         }
+
+        internal static unsafe void InitializeCommandLineArgsW(int argc, char** argv)
+        {
+            // argc and argv are garbage because EfiMain didn't pass any
+        }
+
+        private static string[] GetMainMethodArguments()
+        {
+            return new string[0];
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
