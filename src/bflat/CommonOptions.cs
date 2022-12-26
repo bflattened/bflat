@@ -150,3 +150,11 @@ public enum StandardLibType
     None,
     Zero,
 }
+
+public enum TargetOS
+{
+    Unknown,
+    Windows,
+    Linux,
+    UEFI,
+}

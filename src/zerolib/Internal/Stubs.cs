@@ -137,10 +137,13 @@ assigningNull:
             [DllImport("kernel32")]
             static extern MethodTable** LocalAlloc(uint flags, uint size);
             MethodTable** result = LocalAlloc(0x40, size);
-#else
+#elif LINUX
             [DllImport("libSystem.Native")]
             static extern MethodTable** SystemNative_Malloc(nuint size);
             MethodTable** result = SystemNative_Malloc(size);
+#elif UEFI
+            MethodTable** result;
+            StartupCodeHelpers.s_efiSystemTable->BootServices->AllocatePool(2 /* LoaderData*/, (nint)size, (void**)&result);
 #endif
 
             return result;

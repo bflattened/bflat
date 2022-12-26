@@ -70,7 +70,7 @@ internal class BuildCommand : CommandBase
     };
     private static Option<string> TargetOSOption = new Option<string>("--os", "Target operating system")
     {
-        ArgumentHelpName = "linux|windows"
+        ArgumentHelpName = "linux|windows|uefi"
     };
     
     private static Option<string> TargetLibcOption = new Option<string>("--libc", "Target libc (Windows: shcrt|none, Linux: glibc|bionic)");
@@ -190,6 +190,7 @@ internal class BuildCommand : CommandBase
             {
                 "windows" => TargetOS.Windows,
                 "linux" => TargetOS.Linux,
+                "uefi" => TargetOS.UEFI,
                 _ => throw new Exception($"Target OS '{targetOSStr}' is not supported"),
             };
         }
@@ -342,7 +343,12 @@ internal class BuildCommand : CommandBase
 
         var simdVectorLength = instructionSetSupport.GetVectorTSimdVector();
         var targetAbi = TargetAbi.NativeAot;
-        var targetDetails = new TargetDetails(targetArchitecture, targetOS, targetAbi, simdVectorLength);
+        var tsTargetOs = targetOS switch
+        {
+            TargetOS.Windows or TargetOS.UEFI => Internal.TypeSystem.TargetOS.Windows,
+            TargetOS.Linux => Internal.TypeSystem.TargetOS.Linux,
+        };
+        var targetDetails = new TargetDetails(targetArchitecture, tsTargetOs, targetAbi, simdVectorLength);
         CompilerTypeSystemContext typeSystemContext =
             new BflatTypeSystemContext(targetDetails, genericsMode, supportsReflection ? DelegateFeature.All : 0, ms, compiledModuleName);
 
@@ -369,6 +375,7 @@ internal class BuildCommand : CommandBase
             {
                 TargetOS.Linux => "linux",
                 TargetOS.Windows => "windows",
+                TargetOS.UEFI => "uefi",
                 _ => throw new Exception(targetOS.ToString()),
             };
             currentLibPath = Path.Combine(currentLibPath, osPart);
@@ -488,7 +495,7 @@ internal class BuildCommand : CommandBase
             directPinvokes.Add("sokol");
             directPinvokes.Add("shell32!CommandLineToArgvW"); // zerolib uses this
         }
-        else
+        else if (targetOS == TargetOS.Linux)
         {
             directPinvokes.Add("libSystem.Native");
             directPinvokes.Add("libSystem.Globalization.Native");
@@ -686,6 +693,10 @@ internal class BuildCommand : CommandBase
                 else
                     outputFilePath += ".dll";
             }
+            else if (targetOS == TargetOS.UEFI)
+            {
+                outputFilePath += ".efi";
+            }
             else
             {
                 if (buildTargetType is not BuildTargetType.Exe and not BuildTargetType.WinExe)
@@ -703,7 +714,7 @@ internal class BuildCommand : CommandBase
             logger.LogMessage("Generating native code");
         string mapFileName = result.GetValueForOption(MapFileOption);
         ObjectDumper dumper = mapFileName != null ? new XmlObjectDumper(mapFileName) : null;
-        string objectFilePath = Path.ChangeExtension(outputFilePath, targetOS == TargetOS.Windows ? ".obj" : ".o");
+        string objectFilePath = Path.ChangeExtension(outputFilePath, targetOS is TargetOS.Windows or TargetOS.UEFI ? ".obj" : ".o");
 
         PerfWatch compileWatch = new PerfWatch("Native compile");
         CompilationResults compilationResults = compilation.Compile(objectFilePath, dumper);
@@ -752,7 +763,7 @@ internal class BuildCommand : CommandBase
 
         var ldArgs = new StringBuilder();
 
-        if (targetOS == TargetOS.Windows)
+        if (targetOS is TargetOS.Windows or TargetOS.UEFI)
         {
             ldArgs.Append("-flavor link \"");
             ldArgs.Append(objectFilePath);
@@ -766,12 +777,18 @@ internal class BuildCommand : CommandBase
                 ldArgs.AppendFormat("/libpath:\"{0}\" ", lpath);
             }
 
-            if (buildTargetType == BuildTargetType.Exe)
+            if (targetOS == TargetOS.UEFI)
+                ldArgs.Append("/subsystem:EFI_APPLICATION ");
+            else if (buildTargetType == BuildTargetType.Exe)
                 ldArgs.Append("/subsystem:console ");
-            if (buildTargetType == BuildTargetType.WinExe)
+            else if (buildTargetType == BuildTargetType.WinExe)
                 ldArgs.Append("/subsystem:windows ");
 
-            if (buildTargetType is BuildTargetType.Exe or BuildTargetType.WinExe)
+            if (targetOS == TargetOS.UEFI)
+            {
+                ldArgs.Append("/entry:EfiMain ");
+            }
+            else if (buildTargetType is BuildTargetType.Exe or BuildTargetType.WinExe)
             {
                 if (stdlib == StandardLibType.DotNet)
                     ldArgs.Append("/entry:wmainCRTStartup bootstrapper.lib ");
@@ -800,17 +817,20 @@ internal class BuildCommand : CommandBase
             {
                 ldArgs.Append("/merge:.modules=.rdata ");
             }
-            ldArgs.Append("sokol.lib advapi32.lib bcrypt.lib crypt32.lib iphlpapi.lib kernel32.lib mswsock.lib ncrypt.lib normaliz.lib  ntdll.lib ole32.lib oleaut32.lib user32.lib version.lib ws2_32.lib shell32.lib Secur32.Lib ");
-
-            if (libc != "none")
+            if (targetOS == TargetOS.Windows)
             {
-                ldArgs.Append("shcrt.lib ");
-                ldArgs.Append("api-ms-win-crt-conio-l1-1-0.lib api-ms-win-crt-convert-l1-1-0.lib api-ms-win-crt-environment-l1-1-0.lib ");
-                ldArgs.Append("api-ms-win-crt-filesystem-l1-1-0.lib api-ms-win-crt-heap-l1-1-0.lib api-ms-win-crt-locale-l1-1-0.lib ");
-                ldArgs.Append("api-ms-win-crt-multibyte-l1-1-0.lib api-ms-win-crt-math-l1-1-0.lib ");
-                ldArgs.Append("api-ms-win-crt-process-l1-1-0.lib api-ms-win-crt-runtime-l1-1-0.lib api-ms-win-crt-stdio-l1-1-0.lib ");
-                ldArgs.Append("api-ms-win-crt-string-l1-1-0.lib api-ms-win-crt-time-l1-1-0.lib api-ms-win-crt-utility-l1-1-0.lib ");
-                ldArgs.Append("kernel32-supplements.lib ");
+                ldArgs.Append("sokol.lib advapi32.lib bcrypt.lib crypt32.lib iphlpapi.lib kernel32.lib mswsock.lib ncrypt.lib normaliz.lib  ntdll.lib ole32.lib oleaut32.lib user32.lib version.lib ws2_32.lib shell32.lib Secur32.Lib ");
+
+                if (libc != "none")
+                {
+                    ldArgs.Append("shcrt.lib ");
+                    ldArgs.Append("api-ms-win-crt-conio-l1-1-0.lib api-ms-win-crt-convert-l1-1-0.lib api-ms-win-crt-environment-l1-1-0.lib ");
+                    ldArgs.Append("api-ms-win-crt-filesystem-l1-1-0.lib api-ms-win-crt-heap-l1-1-0.lib api-ms-win-crt-locale-l1-1-0.lib ");
+                    ldArgs.Append("api-ms-win-crt-multibyte-l1-1-0.lib api-ms-win-crt-math-l1-1-0.lib ");
+                    ldArgs.Append("api-ms-win-crt-process-l1-1-0.lib api-ms-win-crt-runtime-l1-1-0.lib api-ms-win-crt-stdio-l1-1-0.lib ");
+                    ldArgs.Append("api-ms-win-crt-string-l1-1-0.lib api-ms-win-crt-time-l1-1-0.lib api-ms-win-crt-utility-l1-1-0.lib ");
+                    ldArgs.Append("kernel32-supplements.lib ");
+                }
             }
             ldArgs.Append("/opt:ref,icf /nodefaultlib:libcpmt.lib ");
         }
@@ -954,7 +974,7 @@ internal class BuildCommand : CommandBase
             try { File.Delete(exportsFile); } catch { }
 
         if (exitCode == 0
-            && targetOS != TargetOS.Windows
+            && targetOS is not TargetOS.Windows and not TargetOS.UEFI
             && result.GetValueForOption(SeparateSymbolsOption))
         {
             if (logger.IsVerbose)

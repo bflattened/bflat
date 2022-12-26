@@ -215,11 +215,16 @@
 
     <Exec Command="&quot;$(RunCommand)&quot; build @&quot;$(IntermediateLayoutOutputPath)\runbflat.rsp&quot;" />
 
-    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\linux\zerolib.dll&quot;"
+    <MakeDir Directories="$(LayoutsDirectory)%(SupportedHost.Identity)\lib\uefi\x64"
+             Condition="!Exists('$(LayoutsDirectory)%(SupportedHost.Identity)\lib\uefi\x64')" />
+
+    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d LINUX -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\linux\zerolib.dll&quot;"
           WorkingDirectory="$(MSBuildThisFileDirectory)..\zerolib" />
     <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d WINDOWS -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\windows\zerolib.dll&quot;"
           WorkingDirectory="$(MSBuildThisFileDirectory)..\zerolib" />
-    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\ref\zerolib.dll&quot;"
+    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d UEFI -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\uefi\zerolib.dll&quot;"
+          WorkingDirectory="$(MSBuildThisFileDirectory)..\zerolib" />
+    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d LINUX -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\ref\zerolib.dll&quot;"
           WorkingDirectory="$(MSBuildThisFileDirectory)..\zerolib" />
   </Target>
 

@@ -47,7 +47,7 @@ namespace System
         {
             for (int i = 0; i < s.Length; i++)
                 Console.Write(s[i]);
-#if WINDOWS
+#if WINDOWS || UEFI
             Console.Write('\r');
 #endif
             Console.Write('\n');

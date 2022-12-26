@@ -25,8 +25,6 @@ struct Game
 
         MakeFood(s, out byte foodX, out byte foodY);
 
-        long gameTime = Environment.TickCount64;
-
         while (true)
         {
             fb.Clear();
@@ -67,13 +65,7 @@ struct Game
 
             fb.Render();
 
-            gameTime += 100;
-
-            long delay = gameTime - Environment.TickCount64;
-            if (delay >= 0)
-                Thread.Sleep((int)delay);
-            else
-                gameTime = Environment.TickCount64;
+            Thread.Sleep(100);
         }
     }
 
@@ -100,7 +92,12 @@ struct Game
 
         while (true)
         {
+#if UEFI
+            // Work around TickCount crashing on QEMU
+            Game g = new Game(0);
+#else
             Game g = new Game((uint)Environment.TickCount64);
+#endif
             Result result = g.Run(ref fb);
 
             string message = result == Result.Win ? "You win" : "You lose";
