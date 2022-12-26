@@ -14,25 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#if LINUX
+#if UEFI
 
-using System.Runtime.InteropServices;
+using Internal.Runtime.CompilerHelpers;
 
-namespace System
+namespace System.Threading
 {
-    public static partial class Environment
+    public static class Thread
     {
-        [DllImport("libSystem.Native")]
-        public static extern long SystemNative_GetTimestamp();
-
-        public static long TickCount64 => SystemNative_GetTimestamp() / 1_000_000;
-
-        [DllImport("libSystem.Native")]
-        public static extern void SystemNative_Abort();
-
-        public static void FailFast(string message)
+        public static unsafe void Sleep(int delayMs)
         {
-            SystemNative_Abort();
+            StartupCodeHelpers.s_efiSystemTable->BootServices->Stall(1000 * (uint)delayMs);
+            Environment.s_stallSinceLastTickCount += delayMs;
         }
     }
 }

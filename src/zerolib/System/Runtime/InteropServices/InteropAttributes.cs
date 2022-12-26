@@ -53,4 +53,8 @@ namespace System.Runtime.InteropServices
     public sealed class InAttribute : Attribute
     {
     }
+
+    public sealed class OutAttribute : Attribute
+    {
+    }
 }
