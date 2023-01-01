@@ -22,6 +22,7 @@ bflat can currently target:
 * x64/arm64 glibc-based Linux (2.17 or later on x64 (~CentOS 7), or 2.27 or later on arm64 (~Ubuntu 18.04))
 * arm64 bionic-based Linux (Android API level 21)
 * x64/arm64 Windows (Windows 7 or later)
+* x64 UEFI (only with `--stdlib:zero`)
 
 Support for musl-based Linux is in the works.
 
@@ -42,6 +43,10 @@ That's the point. bflat is to dotnet as VS Code is to VS.
 ## 🎙 Where is the source code
 
 The source code is split between this repo and [bflattened/runtime](https://github.com/bflattened/runtime). The bflattened/runtime repo is a regularly updated fork of the [dotnet/runtime](https://github.com/dotnet/runtime) repo that contains non-upstreamable bflat-specific changes. The bflattened/runtime repo produces compiler and runtime binaries that this repo consumes.
+
+## 📚 Two standard libraries
+
+bflat comes with two standard libraries. The first one (called `DotNet`) is the default and comes from the dotnet/runtime repo fork. It includes everything you know and love from .NET. The second one (called `Zero`) is a minimal standard library that doesn't have much more than just primitive types. The source code for it lives in this repo. Switch between those with `--stdlib:zero` argument.
 
 ## 📻 How to stay up-to-date on bflat?
 
@@ -100,8 +105,12 @@ If you're targeting a Unix-like system, you might want to pass `--separate-symbo
 
 ## 🎸 Preprocessor definitions
 
-Besides the preprocessor definitions provided at the command line, bflat defines several other symbols: `BFLAT` (defined always), `DEBUG` (defined when not optimizing), `WINDOWS`/`LINUX` (when the corresponding operating system is the target), `X64`/`ARM64` (when the corresponding architecture is targeted).
+Besides the preprocessor definitions provided at the command line, bflat defines several other symbols: `BFLAT` (defined always), `DEBUG` (defined when not optimizing), `WINDOWS`/`LINUX`/`UEFI` (when the corresponding operating system is the target), `X64`/`ARM64` (when the corresponding architecture is targeted).
 
 ## 🎹 Debugging bflat apps
 
 Apps compiled with bflat debug same as any other native code. Launch the produced executable under your favorite debugger (gdb or lldb on Linux, or Visual Studio or WinDbg on Windows) and you'll be able to set breakpoints, step, and see local variables.
+
+## ☝ Samples
+
+The repo has samples with README in the `samples` directory. Clone the repo and try the samples yourself!
