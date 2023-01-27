@@ -39,6 +39,60 @@ namespace System
             }
         }
 
+        public int IndexOf(char c)
+        {
+            for (int i = 0; i < _length; i++)
+            {
+                if (this[i] != c)
+                {
+                    continue;
+                }
+
+                return i;
+            }
+        }
+
+        public int LastIndexOf(char c)
+        {
+            int lastIndex = -1;
+            for (int i = 0; i < _length; i++)
+            {
+                if (this[i] != c)
+                {
+                    continue;
+                }
+
+                lastIndex = i;
+            }
+            
+            return lastIndex,
+        }
+        
+        public static unsafe bool ==(String lhs, String rhs)
+        {
+            bool isEqual = false;
+
+            if (lhs.Length != rhs.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < lhs.Length; i++)
+            {
+                if (lhs[i] != rhs[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public static bool !=(String lhs, String rhs)
+        {
+            return !(lhs == rhs);
+        }
+
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern unsafe String(char* value);
 
