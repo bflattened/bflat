@@ -21,6 +21,8 @@ namespace System
 {
     public sealed class String
     {
+        public static readonly String Empty = new String('\0');
+        
         // The layout of the string type is a contract with the compiler.
         private readonly int _length;
         private char _firstChar;
