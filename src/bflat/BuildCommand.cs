@@ -117,6 +117,7 @@ internal class BuildCommand : CommandBase
             CommonOptions.StdLibOption,
             CommonOptions.DeterministicOption,
             CommonOptions.VerbosityOption,
+            CommonOptions.LangVersionOption,
         };
         command.Handler = new BuildCommand();
 
@@ -210,7 +211,16 @@ internal class BuildCommand : CommandBase
         string compiledModuleName = Path.GetFileName(outputNameWithoutSuffix);
 
         PerfWatch createCompilationWatch = new PerfWatch("Create IL compilation");
-        CSharpCompilation sourceCompilation = ILBuildCommand.CreateCompilation(compiledModuleName, inputFiles, references, defines, optimizationLevel, buildTargetType, targetArchitecture, targetOS);
+        CSharpCompilation sourceCompilation = ILBuildCommand.CreateCompilation(
+            compiledModuleName,
+            inputFiles,
+            references,
+            defines,
+            optimizationLevel,
+            buildTargetType,
+            targetArchitecture,
+            targetOS,
+            result.GetValueForOption(CommonOptions.LangVersionOption));
         createCompilationWatch.Complete();
 
         bool nativeLib;

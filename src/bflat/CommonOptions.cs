@@ -69,6 +69,10 @@ internal static class CommonOptions
 
     public static Option<bool> NoDebugInfoOption = new Option<bool>("--no-debug-info", "Disable generation of debug information");
 
+    public static Option<string> LangVersionOption =
+        new Option<string>("--langversion",
+            "C# language version ('latest', 'default', 'latestmajor', 'preview', or version like '6' or '7.1'");
+
     public static string GetOutputFileNameWithoutSuffix(string[] inputFileNames)
     {
         string outputFileName;

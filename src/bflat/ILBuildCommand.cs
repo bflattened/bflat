@@ -51,6 +51,7 @@ internal class ILBuildCommand : CommandBase
             CommonOptions.TargetOption,
             CommonOptions.ResourceOption,
             CommonOptions.NoDebugInfoOption,
+            CommonOptions.LangVersionOption,
             OptimizeOption,
         };
         command.Handler = new ILBuildCommand();
@@ -79,7 +80,8 @@ internal class ILBuildCommand : CommandBase
         CSharpCompilation compilation = CreateCompilation(Path.GetFileName(outputNameWithoutSuffix), inputFiles, references, defines,
             optimizationLevel,
             buildTargetType,
-            deterministic);
+            deterministic,
+            result.GetValueForOption(CommonOptions.LangVersionOption));
 
         DebugInformationFormat debugInfoFormat = result.GetValueForOption(CommonOptions.NoDebugInfoOption)
             ? 0 : DebugInformationFormat.Embedded;
@@ -134,7 +136,8 @@ internal class ILBuildCommand : CommandBase
         OptimizationLevel optimizationLevel,
         BuildTargetType buildTargetType,
         TargetArchitecture arch,
-        TargetOS os)
+        TargetOS os,
+        string languageVersion)
     {
         List<string> defines = new List<string>(userDefines)
         {
@@ -156,7 +159,8 @@ internal class ILBuildCommand : CommandBase
         return CreateCompilation(moduleName, inputFiles, references, defines.ToArray(),
             optimizationLevel,
             buildTargetType,
-            deterministic: true);
+            deterministic: true,
+            languageVersion);
     }
 
     private static CSharpCompilation CreateCompilation(
@@ -166,7 +170,8 @@ internal class ILBuildCommand : CommandBase
         string[] userDefines,
         OptimizationLevel optimizationLevel,
         BuildTargetType buildTargetType,
-        bool deterministic)
+        bool deterministic,
+        string languageVersion)
     {
         OutputKind? outputKind = buildTargetType switch
         {
@@ -185,12 +190,17 @@ internal class ILBuildCommand : CommandBase
         foreach (var reference in references)
             metadataReferences.Add(MetadataReference.CreateFromFile(reference));
 
+        if (!LanguageVersionFacts.TryParse(languageVersion, out LanguageVersion langVer))
+        {
+            throw new Exception($"Language version '{languageVersion}' not recognized");
+        }
+
         var trees = new List<SyntaxTree>();
         foreach (var sourceFile in inputFiles)
         {
             var st = SourceText.From(File.OpenRead(sourceFile));
             CSharpParseOptions parseOptions = new CSharpParseOptions(
-                languageVersion: LanguageVersion.Latest,
+                languageVersion: langVer,
                 documentationMode: DocumentationMode.None,
                 preprocessorSymbols: defines);
             string path = sourceFile;
