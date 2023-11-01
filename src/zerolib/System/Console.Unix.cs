@@ -148,18 +148,18 @@ namespace System
 
             public static bool KeyAvailable()
             {
-                return SystemNative_StdinReady(1) != 0;
+                return SystemNative_StdinReady() != 0;
 
                 [DllImport("libSystem.Native")]
-                static extern int SystemNative_StdinReady(int distinguishNewLines);
+                static extern int SystemNative_StdinReady();
             }
 
             public static ConsoleKeyInfo ReadKey()
             {
-                SystemNative_InitializeConsoleBeforeRead(0, 1, 0);
+                SystemNative_InitializeConsoleBeforeRead(1, 0);
 
                 [DllImport("libSystem.Native")]
-                static extern void SystemNative_InitializeConsoleBeforeRead(int distinguishNewLines, byte minChars, byte decisecondsTimeout);
+                static extern void SystemNative_InitializeConsoleBeforeRead(byte minChars, byte decisecondsTimeout);
 
                 try
                 {

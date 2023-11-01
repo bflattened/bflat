@@ -25,7 +25,7 @@ jobs:
       - name: Setup dotnet
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: '8.0.x'
       - name: Ask Github to please let us use the package registry
         run: |
           cd src/bflat
