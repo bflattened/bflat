@@ -31,19 +31,20 @@ namespace System.Runtime.CompilerServices
         private static unsafe void CheckStaticClassConstruction(ref StaticClassConstructionContext context)
         {
             // Not dealing with multithreading issues.
-            if (context.Initialized != 1)
+            if (context.cctorMethodAddress != default)
             {
-                context.Initialized = 1;
-                context.ClassConstructor();
+                IntPtr address = context.cctorMethodAddress;
+                context.cctorMethodAddress = default;
+                ((delegate*<void>)address)();
             }
         }
     }
 
     // This data structure is a contract with the compiler. It holds the address of a static
     // constructor and a flag that specifies whether the constructor already executed.
-    internal unsafe struct StaticClassConstructionContext
+    [StructLayout(LayoutKind.Sequential)]
+    public struct StaticClassConstructionContext
     {
-        public delegate*<void> ClassConstructor;
-        public int Initialized;
+        public IntPtr cctorMethodAddress;
     }
 }

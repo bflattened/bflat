@@ -35,7 +35,6 @@ using ILCompiler;
 
 using Internal.TypeSystem;
 using Internal.IL;
-using Internal.JitInterface;
 using Internal.TypeSystem.Ecma;
 
 internal class BuildCommand : CommandBase
@@ -260,71 +259,15 @@ internal class BuildCommand : CommandBase
         }
         ms.Seek(0, SeekOrigin.Begin);
 
-        InstructionSetSupportBuilder instructionSetSupportBuilder = new InstructionSetSupportBuilder(targetArchitecture);
-
-        // The runtime expects certain baselines that the codegen can assume as well.
-        if ((targetArchitecture == TargetArchitecture.X86) || (targetArchitecture == TargetArchitecture.X64))
+        var tsTargetOs = targetOS switch
         {
-            instructionSetSupportBuilder.AddSupportedInstructionSet("sse2");
-        }
-        else if (targetArchitecture == TargetArchitecture.ARM64)
-        {
-            instructionSetSupportBuilder.AddSupportedInstructionSet("neon");
-        }
+            TargetOS.Windows or TargetOS.UEFI => Internal.TypeSystem.TargetOS.Windows,
+            TargetOS.Linux => Internal.TypeSystem.TargetOS.Linux,
+        };
 
-        instructionSetSupportBuilder.ComputeInstructionSetFlags(out var supportedInstructionSet, out var unsupportedInstructionSet,
-            (string specifiedInstructionSet, string impliedInstructionSet) =>
-                throw new Exception(String.Format("Unsupported combination of instruction sets: {0}/{1}", specifiedInstructionSet, impliedInstructionSet)));
-
-        InstructionSetSupportBuilder optimisticInstructionSetSupportBuilder = new InstructionSetSupportBuilder(targetArchitecture);
-
-        // Optimistically assume some instruction sets are present.
-        if ((targetArchitecture == TargetArchitecture.X86) || (targetArchitecture == TargetArchitecture.X64))
-        {
-            // We set these hardware features as enabled always, as most
-            // of hardware in the wild supports them. Note that we do not indicate support for AVX, or any other
-            // instruction set which uses the VEX encodings as the presence of those makes otherwise acceptable
-            // code be unusable on hardware which does not support VEX encodings, as well as emulators that do not
-            // support AVX instructions.
-            //
-            // The compiler is able to generate runtime IsSupported checks for the following instruction sets.
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("sse4.2");
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("aes");
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("pclmul");
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("movbe");
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("popcnt");
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("lzcnt");
-
-            // If AVX was enabled, we can opportunistically enable FMA/BMI/VNNI
-            Debug.Assert(InstructionSet.X64_AVX == InstructionSet.X86_AVX);
-            if (supportedInstructionSet.HasInstructionSet(InstructionSet.X64_AVX))
-            {
-                optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("fma");
-                optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("bmi");
-                optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("bmi2");
-                optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("avxvnni");
-            }
-        }
-        else if (targetArchitecture == TargetArchitecture.ARM64)
-        {
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("aes");
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("crc");
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("sha1");
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("sha2");
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("lse");
-            optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("rcpc");
-        }
-
-        optimisticInstructionSetSupportBuilder.ComputeInstructionSetFlags(out var optimisticInstructionSet, out _,
-            (string specifiedInstructionSet, string impliedInstructionSet) => throw new NotSupportedException());
-        optimisticInstructionSet.Remove(unsupportedInstructionSet);
-        optimisticInstructionSet.Add(supportedInstructionSet);
-
-        var instructionSetSupport = new InstructionSetSupport(supportedInstructionSet,
-                                                              unsupportedInstructionSet,
-                                                              optimisticInstructionSet,
-                                                              InstructionSetSupportBuilder.GetNonSpecifiableInstructionSetsForArch(targetArchitecture),
-                                                              targetArchitecture);
+        InstructionSetSupport instructionSetSupport = Helpers.ConfigureInstructionSetSupport(instructionSet: null, maxVectorTBitWidth: 0, isVectorTOptimistic: false, targetArchitecture, tsTargetOs,
+                "Unrecognized instruction set {0}", "Unsupported combination of instruction sets: {0}/{1}", logger,
+                optimizingForSize: optimizationMode == OptimizationMode.PreferSize);
 
         bool disableReflection = result.GetValueForOption(NoReflectionOption);
         bool disableStackTraceData = result.GetValueForOption(NoStackTraceDataOption) || stdlib != StandardLibType.DotNet;
@@ -353,11 +296,6 @@ internal class BuildCommand : CommandBase
 
         var simdVectorLength = instructionSetSupport.GetVectorTSimdVector();
         var targetAbi = TargetAbi.NativeAot;
-        var tsTargetOs = targetOS switch
-        {
-            TargetOS.Windows or TargetOS.UEFI => Internal.TypeSystem.TargetOS.Windows,
-            TargetOS.Linux => Internal.TypeSystem.TargetOS.Linux,
-        };
         var targetDetails = new TargetDetails(targetArchitecture, tsTargetOs, targetAbi, simdVectorLength);
         CompilerTypeSystemContext typeSystemContext =
             new BflatTypeSystemContext(targetDetails, genericsMode, supportsReflection ? DelegateFeature.All : 0, ms, compiledModuleName);
@@ -465,17 +403,21 @@ internal class BuildCommand : CommandBase
         CompilationModuleGroup compilationGroup;
         List<ICompilationRootProvider> compilationRoots = new List<ICompilationRootProvider>();
 
-        compilationRoots.Add(new ExportedMethodsRootProvider(compiledAssembly));
+        compilationRoots.Add(new UnmanagedEntryPointsRootProvider(compiledAssembly));
+
+        const string settingsBlobName = "g_compilerEmbeddedSettingsBlob";
+        const string knobsBlobName = "g_compilerEmbeddedKnobsBlob";
 
         if (!nativeLib)
         {
-            compilationRoots.Add(new MainMethodRootProvider(compiledAssembly, initializerList));
-            compilationRoots.Add(new RuntimeConfigurationRootProvider(Array.Empty<string>()));
+            compilationRoots.Add(new MainMethodRootProvider(compiledAssembly, initializerList, generateLibraryAndModuleInitializers: true));
+            compilationRoots.Add(new RuntimeConfigurationRootProvider(settingsBlobName, Array.Empty<string>()));
+            compilationRoots.Add(new RuntimeConfigurationRootProvider(knobsBlobName, Array.Empty<string>()));
             compilationRoots.Add(new ExpectedIsaFeaturesRootProvider(instructionSetSupport));
         }
 
         if (compiledAssembly != typeSystemContext.SystemModule)
-            compilationRoots.Add(new ExportedMethodsRootProvider((EcmaModule)typeSystemContext.SystemModule));
+            compilationRoots.Add(new UnmanagedEntryPointsRootProvider((EcmaModule)typeSystemContext.SystemModule));
         compilationGroup = new SingleFileCompilationModuleGroup();
 
         if (nativeLib)
@@ -483,7 +425,8 @@ internal class BuildCommand : CommandBase
             // Set owning module of generated native library startup method to compiler generated module,
             // to ensure the startup method is included in the object file during multimodule mode build
             compilationRoots.Add(new NativeLibraryInitializerRootProvider(typeSystemContext.GeneratedAssembly, initializerList));
-            compilationRoots.Add(new RuntimeConfigurationRootProvider(Array.Empty<string>()));
+            compilationRoots.Add(new RuntimeConfigurationRootProvider(settingsBlobName, Array.Empty<string>()));
+            compilationRoots.Add(new RuntimeConfigurationRootProvider(knobsBlobName, Array.Empty<string>()));
             compilationRoots.Add(new ExpectedIsaFeaturesRootProvider(instructionSetSupport));
         }
 
@@ -526,7 +469,7 @@ internal class BuildCommand : CommandBase
             { "System.Text.Encoding.EnableUnsafeUTF7Encoding", false },
             { "System.Runtime.Serialization.DataContractSerializer.IsReflectionOnly", true },
             { "System.Xml.Serialization.XmlSerializer.IsReflectionOnly", true },
-            { "System.Xml.XmlDownloadManager.IsNonFileStreamSupported", false },
+            { "System.Xml.XmlResolver.IsNetworkingEnabledByDefault", false },
             { "System.Linq.Expressions.CanCompileToIL", false },
             { "System.Linq.Expressions.CanEmitObjectArrayDelegate", false },
             { "System.Linq.Expressions.CanCreateArbitraryDelegates", false },
@@ -561,7 +504,10 @@ internal class BuildCommand : CommandBase
             featureSwitches[name] = value;
         }
 
-        ilProvider = new FeatureSwitchManager(ilProvider, featureSwitches);
+        BodyAndFieldSubstitutions substitutions = default;
+        IReadOnlyDictionary<ModuleDesc, IReadOnlySet<string>> resourceBlocks = default;
+
+        ilProvider = new FeatureSwitchManager(ilProvider, logger, featureSwitches, substitutions);
 
         var stackTracePolicy = !disableStackTraceData ?
             (StackTraceEmissionPolicy)new EcmaMethodStackTraceEmissionPolicy() : new NoStackTraceEmissionPolicy();
@@ -571,9 +517,9 @@ internal class BuildCommand : CommandBase
         UsageBasedMetadataGenerationOptions metadataGenerationOptions = default;
         if (supportsReflection)
         {
-            mdBlockingPolicy = new BlockedInternalsBlockingPolicy(typeSystemContext);
+            mdBlockingPolicy = new NoMetadataBlockingPolicy();
 
-            resBlockingPolicy = new ManifestResourceBlockingPolicy(featureSwitches);
+            resBlockingPolicy = new ManifestResourceBlockingPolicy(logger, featureSwitches, resourceBlocks);
 
             metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.AnonymousTypeHeuristic;
             metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.ReflectionILScanning;
@@ -605,8 +551,10 @@ internal class BuildCommand : CommandBase
             metadataOptions,
             logger,
             featureSwitches,
-            Array.Empty<string>(),
-        Array.Empty<string>());
+            rootEntireAssembliesModules: Array.Empty<string>(),
+            additionalRootedAssemblies: Array.Empty<string>(),
+            trimmedAssemblies: Array.Empty<string>(),
+            satelliteAssemblyFilePaths: Array.Empty<string>());
 
         InteropStateManager interopStateManager = new InteropStateManager(typeSystemContext.GeneratedAssembly);
         InteropStubManager interopStubManager = new UsageBasedInteropStubManager(interopStateManager, pinvokePolicy, logger);
@@ -617,7 +565,11 @@ internal class BuildCommand : CommandBase
         // Enable static data preinitialization in optimized builds.
         bool preinitStatics = optimizationMode != OptimizationMode.None;
 
-        var preinitManager = new PreinitializationManager(typeSystemContext, compilationGroup, ilProvider, preinitStatics);
+        TypePreinit.TypePreinitializationPolicy preinitPolicy = preinitStatics ?
+                new TypePreinit.TypeLoaderAwarePreinitializationPolicy() : new TypePreinit.DisabledPreinitializationPolicy();
+
+        var preinitManager = new PreinitializationManager(typeSystemContext, compilationGroup, ilProvider, preinitPolicy);
+
         builder
             .UseILProvider(ilProvider)
             .UsePreinitializationManager(preinitManager)
@@ -688,6 +640,21 @@ internal class BuildCommand : CommandBase
             // compilation, but before RyuJIT gets there, it might ask questions that we don't
             // have answers for because we didn't scan the entire method.
             builder.UseMethodImportationErrorProvider(scanResults.GetMethodImportationErrorProvider());
+
+            // If we're doing preinitialization, use a new preinitialization manager that
+            // has the whole program view.
+            if (preinitStatics)
+            {
+                preinitManager = new PreinitializationManager(typeSystemContext, compilationGroup, ilProvider, scanResults.GetPreinitializationPolicy());
+                builder.UsePreinitializationManager(preinitManager);
+            }
+
+            // If we have a scanner, we can inline threadstatics storage using the information
+            // we collected at scanning time.
+            // Inlined storage implies a single type manager, thus we do not do it in multifile case.
+            // This could be a command line switch if we really wanted to.
+            //if (libc != "bionic")
+            //    builder.UseInlinedThreadStatics(scanResults.GetInlinedThreadStatics());
         }
 
         ICompilation compilation = builder.ToCompilation();
@@ -737,7 +704,7 @@ internal class BuildCommand : CommandBase
             ExportsFileWriter defFileWriter = new ExportsFileWriter(typeSystemContext, exportsFile);
             foreach (var compilationRoot in compilationRoots)
             {
-                if (compilationRoot is ExportedMethodsRootProvider provider)
+                if (compilationRoot is UnmanagedEntryPointsRootProvider provider)
                     defFileWriter.AddExportedMethods(provider.ExportedMethods);
             }
 
@@ -801,7 +768,7 @@ internal class BuildCommand : CommandBase
             else if (buildTargetType is BuildTargetType.Exe or BuildTargetType.WinExe)
             {
                 if (stdlib == StandardLibType.DotNet)
-                    ldArgs.Append("/entry:wmainCRTStartup bootstrapper.lib ");
+                    ldArgs.Append("/entry:wmainCRTStartup bootstrapper.obj ");
                 else
                     ldArgs.Append("/entry:__managed__Main ");
 
@@ -812,7 +779,7 @@ internal class BuildCommand : CommandBase
             {
                 ldArgs.Append("/dll ");
                 if (stdlib == StandardLibType.DotNet)
-                    ldArgs.Append("/include:NativeAOT_StaticInitialization bootstrapperdll.lib ");
+                    ldArgs.Append("bootstrapperdll.obj ");
                 ldArgs.Append($"/def:\"{exportsFile}\" ");
             }
 
@@ -909,8 +876,7 @@ internal class BuildCommand : CommandBase
             {
                 if (stdlib == StandardLibType.DotNet)
                 {
-                    ldArgs.Append("-lbootstrapperdll ");
-                    ldArgs.Append("--undefined=NativeAOT_StaticInitialization ");
+                    ldArgs.Append($"\"{firstLib}/libbootstrapperdll.o\" ");
                 }
 
                 ldArgs.Append("-shared ");
@@ -919,7 +885,7 @@ internal class BuildCommand : CommandBase
             else
             {
                 if (stdlib == StandardLibType.DotNet)
-                    ldArgs.Append("-lbootstrapper ");
+                    ldArgs.Append($"\"{firstLib}/libbootstrapper.o\" ");
 
                 if (!result.GetValueForOption(NoPieOption))
                     ldArgs.Append("-pie ");

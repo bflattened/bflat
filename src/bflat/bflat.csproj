@@ -3,20 +3,20 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Version Condition="'$(Version)' == ''">42.42.42.42</Version>
     <SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <PropertyGroup>
-    <RuntimeVersion>7.0.4-rtm.23118.1</RuntimeVersion>
+    <RuntimeVersion>8.0.0-rtm.23530.1</RuntimeVersion>
     <RuntimeUri>https://github.com/bflattened/runtime/releases/download/</RuntimeUri>
 
     <BlobsVersion>1.3</BlobsVersion>
     <BlobsUri>https://github.com/bflattened/blobs/releases/download/</BlobsUri>
 
-    <MicrosoftCodeAnalysisCSharpVersion>4.4.0</MicrosoftCodeAnalysisCSharpVersion>
+    <MicrosoftCodeAnalysisCSharpVersion>4.8.0-2.final</MicrosoftCodeAnalysisCSharpVersion>
   </PropertyGroup>
 
   <ItemGroup>
