@@ -34,10 +34,10 @@ namespace Internal.Runtime.CompilerHelpers
             int argc;
             char** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 
-            [DllImport("kernel32")]
+            [DllImport("kernel32"), SuppressGCTransition]
             static extern char* GetCommandLineW();
 
-            [DllImport("shell32")]
+            [DllImport("shell32"), SuppressGCTransition]
             static extern char** CommandLineToArgvW(char* lpCmdLine, int* pNumArgs);
 
             string[] args = new string[argc - 1];

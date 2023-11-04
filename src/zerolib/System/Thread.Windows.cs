@@ -22,7 +22,7 @@ namespace System.Threading
 {
     public static class Thread
     {
-        [DllImport("kernel32")]
+        [DllImport("kernel32"), SuppressGCTransition]
         public static extern void Sleep(int delayMs);
     }
 }

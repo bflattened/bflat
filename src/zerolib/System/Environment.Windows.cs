@@ -22,12 +22,12 @@ namespace System
 {
     public static partial class Environment
     {
-        [DllImport("kernel32")]
+        [DllImport("kernel32"), SuppressGCTransition]
         private static extern long GetTickCount64();
 
         public static long TickCount64 => GetTickCount64();
 
-        [DllImport("kernel32")]
+        [DllImport("kernel32"), SuppressGCTransition]
         private static extern void RaiseFailFastException(IntPtr a, IntPtr b, int flags);
 
         public static void FailFast(string message)

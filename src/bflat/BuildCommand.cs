@@ -180,6 +180,7 @@ internal class BuildCommand : CommandBase
             {
                 "x64" => TargetArchitecture.X64,
                 "arm64" => TargetArchitecture.ARM64,
+                "x86" => TargetArchitecture.X86,
                 _ => throw new Exception($"Target architecture '{targetArchitectureStr}' is not supported"),
             };
         }
@@ -333,6 +334,7 @@ internal class BuildCommand : CommandBase
             {
                 TargetArchitecture.ARM64 => "arm64",
                 TargetArchitecture.X64 => "x64",
+                TargetArchitecture.X86 => "x86",
                 _ => throw new Exception(targetArchitecture.ToString()),
             };
             currentLibPath = Path.Combine(currentLibPath, archPart);
@@ -405,15 +407,20 @@ internal class BuildCommand : CommandBase
 
         compilationRoots.Add(new UnmanagedEntryPointsRootProvider(compiledAssembly));
 
-        const string settingsBlobName = "g_compilerEmbeddedSettingsBlob";
-        const string knobsBlobName = "g_compilerEmbeddedKnobsBlob";
+        if (stdlib == StandardLibType.DotNet)
+        {
+            compilationRoots.Add(new RuntimeConfigurationRootProvider("g_compilerEmbeddedSettingsBlob", Array.Empty<string>()));
+            compilationRoots.Add(new RuntimeConfigurationRootProvider("g_compilerEmbeddedKnobsBlob", Array.Empty<string>()));
+            compilationRoots.Add(new ExpectedIsaFeaturesRootProvider(instructionSetSupport));
+        }
+        else
+        {
+            compilationRoots.Add(new GenericRootProvider<object>(null, (_, rooter) => rooter.RootReadOnlyDataBlob(new byte[4], 4, "Trap threads", "RhpTrapThreads")));
+        }
 
         if (!nativeLib)
         {
             compilationRoots.Add(new MainMethodRootProvider(compiledAssembly, initializerList, generateLibraryAndModuleInitializers: true));
-            compilationRoots.Add(new RuntimeConfigurationRootProvider(settingsBlobName, Array.Empty<string>()));
-            compilationRoots.Add(new RuntimeConfigurationRootProvider(knobsBlobName, Array.Empty<string>()));
-            compilationRoots.Add(new ExpectedIsaFeaturesRootProvider(instructionSetSupport));
         }
 
         if (compiledAssembly != typeSystemContext.SystemModule)
@@ -425,9 +432,6 @@ internal class BuildCommand : CommandBase
             // Set owning module of generated native library startup method to compiler generated module,
             // to ensure the startup method is included in the object file during multimodule mode build
             compilationRoots.Add(new NativeLibraryInitializerRootProvider(typeSystemContext.GeneratedAssembly, initializerList));
-            compilationRoots.Add(new RuntimeConfigurationRootProvider(settingsBlobName, Array.Empty<string>()));
-            compilationRoots.Add(new RuntimeConfigurationRootProvider(knobsBlobName, Array.Empty<string>()));
-            compilationRoots.Add(new ExpectedIsaFeaturesRootProvider(instructionSetSupport));
         }
 
         //
@@ -602,11 +606,17 @@ internal class BuildCommand : CommandBase
 
         DependencyTrackingLevel trackingLevel = DependencyTrackingLevel.None;
 
+        bool foldMethodBodies = optimizationMode != OptimizationMode.None;
+        
+        // Work around problems on Windows
+        if (targetArchitecture == TargetArchitecture.X86 && targetOS == TargetOS.Windows)
+            foldMethodBodies = false;
+
         compilationRoots.Add(metadataManager);
         compilationRoots.Add(interopStubManager);
         builder
             .UseInstructionSetSupport(instructionSetSupport)
-            .UseMethodBodyFolding(enable: optimizationMode != OptimizationMode.None)
+            .UseMethodBodyFolding(foldMethodBodies)
             .UseMetadataManager(metadataManager)
             .UseInteropStubManager(interopStubManager)
             .UseLogger(logger)

@@ -22,12 +22,12 @@ namespace System
 {
     public static partial class Environment
     {
-        [DllImport("libSystem.Native")]
+        [DllImport("libSystem.Native"), SuppressGCTransition]
         public static extern long SystemNative_GetTimestamp();
 
         public static long TickCount64 => SystemNative_GetTimestamp() / 1_000_000;
 
-        [DllImport("libSystem.Native")]
+        [DllImport("libSystem.Native"), SuppressGCTransition]
         public static extern void SystemNative_Abort();
 
         public static void FailFast(string message)

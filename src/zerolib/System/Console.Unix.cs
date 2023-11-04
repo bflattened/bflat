@@ -93,7 +93,7 @@ namespace System
             return ++b;
         }
 
-        [DllImport("libSystem.Native")]
+        [DllImport("libSystem.Native"), SuppressGCTransition]
         private static extern void SystemNative_Log(void* pBuffer, int length);
 
         public static void Write(char c)
@@ -131,7 +131,7 @@ namespace System
             {
                 SystemNative_InitializeTerminalAndSignalHandling();
 
-                [DllImport("libSystem.Native")]
+                [DllImport("libSystem.Native"), SuppressGCTransition]
                 static extern int SystemNative_InitializeTerminalAndSignalHandling();
             }
 
@@ -150,7 +150,7 @@ namespace System
             {
                 return SystemNative_StdinReady() != 0;
 
-                [DllImport("libSystem.Native")]
+                [DllImport("libSystem.Native"), SuppressGCTransition]
                 static extern int SystemNative_StdinReady();
             }
 
@@ -158,7 +158,7 @@ namespace System
             {
                 SystemNative_InitializeConsoleBeforeRead(1, 0);
 
-                [DllImport("libSystem.Native")]
+                [DllImport("libSystem.Native"), SuppressGCTransition]
                 static extern void SystemNative_InitializeConsoleBeforeRead(byte minChars, byte decisecondsTimeout);
 
                 try
@@ -168,7 +168,7 @@ namespace System
                         byte* bufPtr = stackalloc byte[StdInBuffer.Size];
                         int result = SystemNative_ReadStdin(bufPtr, StdInBuffer.Size);
 
-                        [DllImport("libSystem.Native")]
+                        [DllImport("libSystem.Native"), SuppressGCTransition]
                         static extern unsafe int SystemNative_ReadStdin(byte* buffer, int bufferSize);
 
                         if (result <= 0)
@@ -215,7 +215,7 @@ namespace System
                 {
                     SystemNative_UninitializeConsoleAfterRead();
 
-                    [DllImport("libSystem.Native")]
+                    [DllImport("libSystem.Native"), SuppressGCTransition]
                     static extern void SystemNative_UninitializeConsoleAfterRead();
                 }
             }
