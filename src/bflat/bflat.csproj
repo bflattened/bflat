@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <RuntimeVersion>8.0.0-rtm.23530.1</RuntimeVersion>
+    <RuntimeVersion>8.0.0-rtm.23551.1</RuntimeVersion>
     <RuntimeUri>https://github.com/bflattened/runtime/releases/download/</RuntimeUri>
 
     <BlobsVersion>1.3</BlobsVersion>
@@ -217,14 +217,22 @@
 
     <MakeDir Directories="$(LayoutsDirectory)%(SupportedHost.Identity)\lib\uefi\x64"
              Condition="!Exists('$(LayoutsDirectory)%(SupportedHost.Identity)\lib\uefi\x64')" />
+    <MakeDir Directories="$(LayoutsDirectory)%(SupportedHost.Identity)\lib\windows\x86"
+             Condition="!Exists('$(LayoutsDirectory)%(SupportedHost.Identity)\lib\windows\x86')" />
 
-    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d LINUX -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\linux\zerolib.dll&quot;"
+    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d LINUX -d X64 -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\linux\x64\zerolib.dll&quot;"
           WorkingDirectory="$(MSBuildThisFileDirectory)..\zerolib" />
-    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d WINDOWS -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\windows\zerolib.dll&quot;"
+    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d LINUX -d ARM64 -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\linux\arm64\zerolib.dll&quot;"
           WorkingDirectory="$(MSBuildThisFileDirectory)..\zerolib" />
-    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d UEFI -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\uefi\zerolib.dll&quot;"
+    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d WINDOWS -d X64 -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\windows\x64\zerolib.dll&quot;"
           WorkingDirectory="$(MSBuildThisFileDirectory)..\zerolib" />
-    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d LINUX -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\ref\zerolib.dll&quot;"
+    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d WINDOWS -d ARM64 -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\windows\arm64\zerolib.dll&quot;"
+          WorkingDirectory="$(MSBuildThisFileDirectory)..\zerolib" />
+    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d WINDOWS -d X86 -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\windows\x86\zerolib.dll&quot;"
+          WorkingDirectory="$(MSBuildThisFileDirectory)..\zerolib" />
+    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d UEFI -d X64 -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\lib\uefi\zerolib.dll&quot;"
+          WorkingDirectory="$(MSBuildThisFileDirectory)..\zerolib" />
+    <Exec Command="&quot;$(RunCommand)&quot; build-il --stdlib:none -d LINUX -d X64 -o:&quot;$(LayoutsDirectory)%(SupportedHost.Identity)\ref\zerolib.dll&quot;"
           WorkingDirectory="$(MSBuildThisFileDirectory)..\zerolib" />
   </Target>
 

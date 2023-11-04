@@ -19,14 +19,14 @@ using System.Runtime.InteropServices;
 
 namespace System
 {
-    public readonly ref struct ReadOnlySpan<T>
+    public readonly ref struct Span<T>
     {
         private readonly ref T _reference;
         private readonly int _length;
 
         public int Length => _length;
 
-        public ReadOnlySpan(T[] array)
+        public Span(T[] array)
         {
             if (array == null)
             {
@@ -38,13 +38,13 @@ namespace System
             _length = array.Length;
         }
 
-        public unsafe ReadOnlySpan(void* pointer, int length)
+        public unsafe Span(void* pointer, int length)
         {
             _reference = ref Unsafe.As<byte, T>(ref *(byte*)pointer);
             _length = length;
         }
 
-        public ReadOnlySpan(T[] array, int start, int length)
+        public Span(T[] array, int start, int length)
         {
             if (array == null)
             {
@@ -78,6 +78,16 @@ namespace System
             }
         }
 
-        public static implicit operator ReadOnlySpan<T>(T[] array) => new ReadOnlySpan<T>(array);
+        public unsafe void Clear()
+        {
+            for (int i = 0; i < _length; i++)
+                Unsafe.Add(ref _reference, i) = default;
+        }
+
+        public unsafe void Fill(T value)
+        {
+            for (int i = 0; i < _length; i++)
+                Unsafe.Add(ref _reference, i) = value;
+        }
     }
 }

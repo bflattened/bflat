@@ -22,10 +22,10 @@ namespace System.Threading
 {
     public static class Thread
     {
-        [DllImport("libSystem.Native")]
+        [DllImport("libSystem.Native"), SuppressGCTransition]
         private static extern IntPtr SystemNative_LowLevelMonitor_Create();
 
-        [DllImport("libSystem.Native")]
+        [DllImport("libSystem.Native"), SuppressGCTransition]
         private static extern void SystemNative_LowLevelMonitor_TimedWait(IntPtr mon, int ms);
 
         private static IntPtr s_dummyMonitor = SystemNative_LowLevelMonitor_Create();

@@ -52,5 +52,31 @@ namespace System
 #endif
             Console.Write('\n');
         }
+
+        public static void WriteLine(int i)
+        {
+            const int BufferSize = 16;
+            char* pBuffer = stackalloc char[BufferSize];
+            if (i < 0)
+            {
+                Write('-');
+            }
+
+            char* pEnd = &pBuffer[BufferSize - 1];
+            char* pCurrent = pEnd;
+            while (i != 0)
+            {
+                *(pCurrent--) = (char)((i % 10) + '0');
+                i /= 10;
+            }
+
+            while (pCurrent <= pEnd)
+                Write(*(pCurrent++));
+
+#if WINDOWS || UEFI
+            Console.Write('\r');
+#endif
+            Console.Write('\n');
+        }
     }
 }

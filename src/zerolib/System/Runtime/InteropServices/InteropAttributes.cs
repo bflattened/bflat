@@ -24,11 +24,21 @@ namespace System.Runtime.InteropServices
         Auto = 4,
     }
 
+    public enum CallingConvention
+    {
+        Winapi = 1,
+        Cdecl = 2,
+        StdCall = 3,
+        ThisCall = 4,
+        FastCall = 5,
+    }
+
     public sealed class DllImportAttribute : Attribute
     {
         public string EntryPoint;
         public CharSet CharSet;
         public bool ExactSpelling;
+        public CallingConvention CallingConvention;
         public DllImportAttribute(string dllName) { }
     }
 
@@ -47,6 +57,8 @@ namespace System.Runtime.InteropServices
 
     public sealed class StructLayoutAttribute : Attribute
     {
+        public int Size;
+        public int Pack;
         public StructLayoutAttribute(LayoutKind layoutKind) { }
     }
 
@@ -56,5 +68,10 @@ namespace System.Runtime.InteropServices
 
     public sealed class OutAttribute : Attribute
     {
+    }
+
+    public sealed class SuppressGCTransitionAttribute : Attribute
+    {
+        public SuppressGCTransitionAttribute() { }
     }
 }

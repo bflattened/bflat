@@ -57,6 +57,8 @@ namespace Internal.Runtime.CompilerHelpers
     // but the class itself being absent is unhandled. Let's add an empty class.
     unsafe partial class StartupCodeHelpers
     {
+        // Calling convention is wrong on x86 Windows so ifdeffing out
+#if !X86 || !WINDOWS
         // A couple symbols the generated code will need we park them in this class
         // for no particular reason. These aid in transitioning to/from managed code.
         // Since we don't have a GC, the transition is a no-op.
@@ -68,6 +70,8 @@ namespace Internal.Runtime.CompilerHelpers
         static void RhpPInvoke(IntPtr frame) { }
         [RuntimeExport("RhpPInvokeReturn")]
         static void RhpPInvokeReturn(IntPtr frame) { }
+        [RuntimeExport("RhpGcPoll")]
+        static void RhpGcPoll() { }
 
         [RuntimeExport("RhpFallbackFailFast")]
         static void RhpFallbackFailFast() { Environment.FailFast(null); }
@@ -134,19 +138,22 @@ assigningNull:
         static unsafe MethodTable** AllocObject(uint size)
         {
 #if WINDOWS
-            [DllImport("kernel32")]
+            [DllImport("kernel32"), SuppressGCTransition]
             static extern MethodTable** LocalAlloc(uint flags, uint size);
             MethodTable** result = LocalAlloc(0x40, size);
 #elif LINUX
-            [DllImport("libSystem.Native")]
+            [DllImport("libSystem.Native"), SuppressGCTransition]
             static extern MethodTable** SystemNative_Malloc(nuint size);
             MethodTable** result = SystemNative_Malloc(size);
 #elif UEFI
             MethodTable** result;
             StartupCodeHelpers.s_efiSystemTable->BootServices->AllocatePool(2 /* LoaderData*/, (nint)size, (void**)&result);
+#else
+#error Nope
 #endif
 
             return result;
         }
+#endif // !X86 || !WINDOWS
     }
 }

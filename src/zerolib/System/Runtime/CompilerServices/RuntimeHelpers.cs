@@ -26,8 +26,14 @@ namespace System.Runtime.CompilerServices
     [StructLayout(LayoutKind.Sequential)]
     internal class RawArrayData
     {
-        public uint Length; // Array._numComponents padded to IntPtr
+        public uint Length;
+#if X64 || ARM64
         public uint Padding;
+#elif X86 || ARM
+        // No padding on 32bit
+#else
+#error Nope
+#endif
         public byte Data;
     }
 }

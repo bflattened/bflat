@@ -28,14 +28,14 @@ namespace System
             TRUE = 1,
         }
 
-        [DllImport("kernel32")]
+        [DllImport("kernel32"), SuppressGCTransition]
         private static unsafe extern IntPtr GetStdHandle(int c);
 
         private readonly static IntPtr s_outputHandle = GetStdHandle(-11);
 
         private readonly static IntPtr s_inputHandle = GetStdHandle(-10);
 
-        [DllImport("kernel32", EntryPoint = "SetConsoleTitleW")]
+        [DllImport("kernel32", EntryPoint = "SetConsoleTitleW"), SuppressGCTransition]
         private static unsafe extern BOOL SetConsoleTitle(char* c);
 
         public static unsafe string Title
@@ -54,7 +54,7 @@ namespace System
             public BOOL Visible;
         }
 
-        [DllImport("kernel32")]
+        [DllImport("kernel32"), SuppressGCTransition]
         private static unsafe extern BOOL SetConsoleCursorInfo(IntPtr handle, CONSOLE_CURSOR_INFO* cursorInfo);
 
         public static unsafe bool CursorVisible
@@ -70,7 +70,7 @@ namespace System
             }
         }
 
-        [DllImport("kernel32")]
+        [DllImport("kernel32"), SuppressGCTransition]
         private static unsafe extern BOOL SetConsoleTextAttribute(IntPtr handle, ushort attribute);
 
         public static ConsoleColor ForegroundColor
@@ -99,7 +99,7 @@ namespace System
             public KEY_EVENT_RECORD KeyEvent;
         }
 
-        [DllImport("kernel32", EntryPoint = "PeekConsoleInputW", CharSet = CharSet.Unicode)]
+        [DllImport("kernel32", EntryPoint = "PeekConsoleInputW", CharSet = CharSet.Unicode), SuppressGCTransition]
         private static unsafe extern BOOL PeekConsoleInput(IntPtr hConsoleInput, INPUT_RECORD* lpBuffer, uint nLength, uint* lpNumberOfEventsRead);
 
         public static unsafe bool KeyAvailable
@@ -123,7 +123,7 @@ namespace System
             }
         }
 
-        [DllImport("kernel32", EntryPoint = "ReadConsoleInputW", CharSet = CharSet.Unicode)]
+        [DllImport("kernel32", EntryPoint = "ReadConsoleInputW", CharSet = CharSet.Unicode), SuppressGCTransition]
         private static unsafe extern BOOL ReadConsoleInput(IntPtr hConsoleInput, INPUT_RECORD* lpBuffer, uint nLength, uint* lpNumberOfEventsRead);
 
         public static unsafe ConsoleKeyInfo ReadKey(bool intercept)
@@ -144,7 +144,7 @@ namespace System
             public short Left, Top, Right, Bottom;
         }
 
-        [DllImport("kernel32")]
+        [DllImport("kernel32"), SuppressGCTransition]
         private static unsafe extern BOOL SetConsoleWindowInfo(IntPtr handle, BOOL absolute, SMALL_RECT* consoleWindow);
 
         public static unsafe void SetWindowSize(int x, int y)
@@ -165,7 +165,7 @@ namespace System
             public short X, Y;
         }
 
-        [DllImport("kernel32")]
+        [DllImport("kernel32"), SuppressGCTransition]
         private static unsafe extern BOOL SetConsoleScreenBufferSize(IntPtr handle, COORD size);
 
         public static void SetBufferSize(int x, int y)
@@ -173,7 +173,7 @@ namespace System
             SetConsoleScreenBufferSize(s_outputHandle, new COORD { X = (short)x, Y = (short)y });
         }
 
-        [DllImport("kernel32")]
+        [DllImport("kernel32"), SuppressGCTransition]
         private static unsafe extern BOOL SetConsoleCursorPosition(IntPtr handle, COORD position);
 
         public static void SetCursorPosition(int x, int y)
@@ -181,7 +181,7 @@ namespace System
             SetConsoleCursorPosition(s_outputHandle, new COORD { X = (short)x, Y = (short)y });
         }
 
-        [DllImport("kernel32", EntryPoint = "WriteConsoleW")]
+        [DllImport("kernel32", EntryPoint = "WriteConsoleW"), SuppressGCTransition]
         private static unsafe extern BOOL WriteConsole(IntPtr handle, void* buffer, int numChars, int* charsWritten, void* reserved);
 
         public static unsafe void Write(char c)
