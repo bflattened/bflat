@@ -19,6 +19,8 @@ using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Help;
 using System.CommandLine.Parsing;
+using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 
 class Program
@@ -27,6 +29,18 @@ class Program
 
     private static int Main(string[] args)
     {
+        string exeName = Environment.ProcessPath;
+        if (exeName != null)
+        {
+            FileSystemInfo actualExeInfo = File.ResolveLinkTarget(exeName, returnFinalTarget: true);
+            if (actualExeInfo != null)
+            {
+                Process p = Process.Start(actualExeInfo.FullName, args);
+                p.WaitForExit();
+                return p.ExitCode;
+            }
+        }
+
         using PerfWatch total = new PerfWatch("Total");
 
         var root = new RootCommand(
