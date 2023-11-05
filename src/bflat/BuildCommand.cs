@@ -49,6 +49,7 @@ internal class BuildCommand : CommandBase
     private static Option<bool> NoPieOption = new Option<bool>("--no-pie", "Do not generate position independent executable");
 
     private static Option<bool> NoLinkOption = new Option<bool>("-c", "Produce object file, but don't run linker");
+    private static Option<bool> MstatOption = new Option<bool>("--mstat", "Produce MSTAT and DGML files for size analysis");
     private static Option<string[]> LdFlagsOption = new Option<string[]>(new string[] { "--ldflags" }, "Arguments to pass to the linker");
     private static Option<bool> PrintCommandsOption = new Option<bool>("-x", "Print the commands");
 
@@ -65,13 +66,17 @@ internal class BuildCommand : CommandBase
 
     private static Option<string> TargetArchitectureOption = new Option<string>("--arch", "Target architecture")
     {
-        ArgumentHelpName = "x64|arm64"
+        ArgumentHelpName = "x86|x64|arm64"
     };
     private static Option<string> TargetOSOption = new Option<string>("--os", "Target operating system")
     {
         ArgumentHelpName = "linux|windows|uefi"
     };
-    
+    private static Option<string> TargetIsaOption = new Option<string>("-m", "Target instruction set extensions")
+    {
+        ArgumentHelpName = "{isa1}[,{isaN}]|native"
+    };
+
     private static Option<string> TargetLibcOption = new Option<string>("--libc", "Target libc (Windows: shcrt|none, Linux: glibc|bionic)");
 
     private static Option<string> MapFileOption = new Option<string>("--map", "Generate an object map file")
@@ -98,6 +103,7 @@ internal class BuildCommand : CommandBase
             PrintCommandsOption,
             TargetArchitectureOption,
             TargetOSOption,
+            TargetIsaOption,
             TargetLibcOption,
             OptimizeSizeOption,
             OptimizeSpeedOption,
@@ -110,6 +116,7 @@ internal class BuildCommand : CommandBase
             SeparateSymbolsOption,
             CommonOptions.NoDebugInfoOption,
             MapFileOption,
+            MstatOption,
             DirectPInvokesOption,
             FeatureSwitchOption,
             CommonOptions.ResourceOption,
@@ -260,13 +267,42 @@ internal class BuildCommand : CommandBase
         }
         ms.Seek(0, SeekOrigin.Begin);
 
+        string outputFilePath = userSpecificedOutputFileName;
+        if (outputFilePath == null)
+        {
+            outputFilePath = outputNameWithoutSuffix;
+            if (targetOS == TargetOS.Windows)
+            {
+                if (buildTargetType is BuildTargetType.Exe or BuildTargetType.WinExe)
+                    outputFilePath += ".exe";
+                else
+                    outputFilePath += ".dll";
+            }
+            else if (targetOS == TargetOS.UEFI)
+            {
+                outputFilePath += ".efi";
+            }
+            else
+            {
+                if (buildTargetType is not BuildTargetType.Exe and not BuildTargetType.WinExe)
+                {
+                    outputFilePath += ".so";
+
+                    outputFilePath = Path.Combine(
+                        Path.GetDirectoryName(outputFilePath),
+                        "lib" + Path.GetFileName(outputFilePath));
+                }
+            }
+        }
+
         var tsTargetOs = targetOS switch
         {
             TargetOS.Windows or TargetOS.UEFI => Internal.TypeSystem.TargetOS.Windows,
             TargetOS.Linux => Internal.TypeSystem.TargetOS.Linux,
         };
 
-        InstructionSetSupport instructionSetSupport = Helpers.ConfigureInstructionSetSupport(instructionSet: null, maxVectorTBitWidth: 0, isVectorTOptimistic: false, targetArchitecture, tsTargetOs,
+        string isaArg = result.GetValueForOption(TargetIsaOption);
+        InstructionSetSupport instructionSetSupport = Helpers.ConfigureInstructionSetSupport(isaArg, maxVectorTBitWidth: 0, isVectorTOptimistic: false, targetArchitecture, tsTargetOs,
                 "Unrecognized instruction set {0}", "Unsupported combination of instruction sets: {0}/{1}", logger,
                 optimizingForSize: optimizationMode == OptimizationMode.PreferSize);
 
@@ -590,11 +626,18 @@ internal class BuildCommand : CommandBase
                 .UseInteropStubManager(interopStubManager)
                 .UseLogger(logger);
 
+            string scanDgmlLogFileName = result.GetValueForOption(MstatOption) ? Path.ChangeExtension(outputFilePath, ".scan.dgml.xml") : null;
+            if (scanDgmlLogFileName != null)
+                scannerBuilder.UseDependencyTracking(DependencyTrackingLevel.First);
+
             IILScanner scanner = scannerBuilder.ToILScanner();
 
             PerfWatch scanWatch = new PerfWatch("Scanner");
             scanResults = scanner.Scan();
             scanWatch.Complete();
+
+            if (scanDgmlLogFileName != null)
+                scanResults.WriteDependencyLog(scanDgmlLogFileName);
 
             metadataManager = ((UsageBasedMetadataManager)metadataManager).ToAnalysisBasedMetadataManager();
 
@@ -604,7 +647,9 @@ internal class BuildCommand : CommandBase
         DebugInformationProvider debugInfoProvider =
             debugInfoFormat == 0 ? new NullDebugInformationProvider() : new DebugInformationProvider();
 
-        DependencyTrackingLevel trackingLevel = DependencyTrackingLevel.None;
+        string dgmlLogFileName = result.GetValueForOption(MstatOption) ? Path.ChangeExtension(outputFilePath, ".codegen.dgml.xml") : null; ;
+        DependencyTrackingLevel trackingLevel = dgmlLogFileName == null ?
+            DependencyTrackingLevel.None : DependencyTrackingLevel.First;
 
         bool foldMethodBodies = optimizationMode != OptimizationMode.None;
         
@@ -669,42 +714,23 @@ internal class BuildCommand : CommandBase
 
         ICompilation compilation = builder.ToCompilation();
 
-        string outputFilePath = userSpecificedOutputFileName;
-        if (outputFilePath == null)
-        {
-            outputFilePath = outputNameWithoutSuffix;
-            if (targetOS == TargetOS.Windows)
-            {
-                if (buildTargetType is BuildTargetType.Exe or BuildTargetType.WinExe)
-                    outputFilePath += ".exe";
-                else
-                    outputFilePath += ".dll";
-            }
-            else if (targetOS == TargetOS.UEFI)
-            {
-                outputFilePath += ".efi";
-            }
-            else
-            {
-                if (buildTargetType is not BuildTargetType.Exe and not BuildTargetType.WinExe)
-                {
-                    outputFilePath += ".so";
-
-                    outputFilePath = Path.Combine(
-                        Path.GetDirectoryName(outputFilePath),
-                        "lib" + Path.GetFileName(outputFilePath));
-                }
-            }
-        }
-
         if (logger.IsVerbose)
             logger.LogMessage("Generating native code");
         string mapFileName = result.GetValueForOption(MapFileOption);
-        ObjectDumper dumper = mapFileName != null ? new XmlObjectDumper(mapFileName) : null;
+        string mstatFileName = result.GetValueForOption(MstatOption) ? Path.ChangeExtension(outputFilePath, ".mstat") : null;
+
+        List<ObjectDumper> dumpers = new List<ObjectDumper>();
+
+        if (mapFileName != null)
+            dumpers.Add(new XmlObjectDumper(mapFileName));
+
+        if (mstatFileName != null)
+            dumpers.Add(new MstatObjectDumper(mstatFileName, typeSystemContext));
+
         string objectFilePath = Path.ChangeExtension(outputFilePath, targetOS is TargetOS.Windows or TargetOS.UEFI ? ".obj" : ".o");
 
         PerfWatch compileWatch = new PerfWatch("Native compile");
-        CompilationResults compilationResults = compilation.Compile(objectFilePath, dumper);
+        CompilationResults compilationResults = compilation.Compile(objectFilePath, ObjectDumper.Compose(dumpers));
         compileWatch.Complete();
 
         string exportsFile = null;
@@ -720,6 +746,11 @@ internal class BuildCommand : CommandBase
 
             defFileWriter.EmitExportedMethods();
         }
+
+        typeSystemContext.LogWarnings(logger);
+
+        if (dgmlLogFileName != null)
+            compilationResults.WriteDependencyLog(dgmlLogFileName);
 
         if (debugInfoProvider is IDisposable)
             ((IDisposable)debugInfoProvider).Dispose();
