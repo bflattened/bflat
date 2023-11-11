@@ -147,10 +147,14 @@ assigningNull:
             MethodTable** result = SystemNative_Malloc(size);
 #elif UEFI
             MethodTable** result;
-            StartupCodeHelpers.s_efiSystemTable->BootServices->AllocatePool(2 /* LoaderData*/, (nint)size, (void**)&result);
+            if (EfiSystemTable->BootServices->AllocatePool(2 /* LoaderData*/, (nint)size, (void**)&result) != 0)
+                result = null;
 #else
 #error Nope
 #endif
+
+            if (result == null)
+                Environment.FailFast(null);
 
             return result;
         }

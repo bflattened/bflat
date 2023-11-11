@@ -25,8 +25,6 @@ namespace Internal.Runtime.CompilerHelpers
 {
     unsafe partial class StartupCodeHelpers
     {
-        internal static EFI_SYSTEM_TABLE* s_efiSystemTable;
-
         [RuntimeImport("*", "__managed__Main")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         static extern int ManagedMain(int argc, char** argv);
@@ -34,7 +32,7 @@ namespace Internal.Runtime.CompilerHelpers
         [RuntimeExport("EfiMain")]
         static long EfiMain(IntPtr imageHandle, EFI_SYSTEM_TABLE* systemTable)
         {
-            s_efiSystemTable = systemTable;
+            SetEfiSystemTable(systemTable);
             ManagedMain(0, null);
 
             while (true) ;
@@ -81,7 +79,7 @@ namespace Internal.Runtime.CompilerHelpers
     unsafe readonly struct EFI_SIMPLE_TEXT_INPUT_PROTOCOL
     {
         private readonly IntPtr _pad0;
-        public readonly delegate*<void*, EFI_INPUT_KEY*, ulong> ReadKeyStroke;
+        public readonly delegate* unmanaged<void*, EFI_INPUT_KEY*, ulong> ReadKeyStroke;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -127,10 +125,18 @@ namespace Internal.Runtime.CompilerHelpers
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    struct EFI_TIME_CAPABILITIES
+    {
+        public uint Resolution;
+        public uint Accuracy;
+        public byte SetsToZero;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     unsafe readonly struct EFI_RUNTIME_SERVICES
     {
         public readonly EFI_TABLE_HEADER Hdr;
-        public readonly delegate*<EFI_TIME*, void*, ulong> GetTime;
+        public readonly delegate* unmanaged<EFI_TIME*, EFI_TIME_CAPABILITIES*, ulong> GetTime;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -142,7 +148,7 @@ namespace Internal.Runtime.CompilerHelpers
         private readonly void* pad2;
         private readonly void* pad3;
         private readonly void* pad4;
-        public readonly delegate*<int, nint, void**, ulong> AllocatePool;
+        public readonly delegate* unmanaged<int, nint, void**, ulong> AllocatePool;
         private readonly void* pad6;
         private readonly void* pad7;
         private readonly void* pad8;
@@ -165,7 +171,7 @@ namespace Internal.Runtime.CompilerHelpers
         private readonly void* pad25;
         private readonly void* pad26;
         private readonly void* pad27;
-        public readonly delegate*<uint, ulong> Stall;
+        public readonly delegate* unmanaged<uint, ulong> Stall;
     }
 }
 

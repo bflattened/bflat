@@ -21,14 +21,13 @@ using Internal.Runtime.CompilerHelpers;
 
 namespace System
 {
-    public static partial class Environment
+    public static unsafe partial class Environment
     {
         public unsafe static void FailFast(string message)
         {
-            EFI_SYSTEM_TABLE* tbl = StartupCodeHelpers.s_efiSystemTable;
-            fixed (char* pMessage = message)
+            fixed (char* pMessage = message ?? "FailFast")
             {
-                tbl->ConOut->OutputString(tbl->ConOut, pMessage);
+                EfiSystemTable->ConOut->OutputString(EfiSystemTable->ConOut, pMessage);
             }
             while (true) ;
         }
@@ -40,9 +39,8 @@ namespace System
         {
             get
             {
-                EFI_SYSTEM_TABLE* tbl = StartupCodeHelpers.s_efiSystemTable;
                 EFI_TIME time;
-                tbl->RuntimeServices->GetTime(&time, null);
+                EfiSystemTable->RuntimeServices->GetTime(&time, null);
                 long days = time.Year * 365 + time.Month * 31 + time.Day;
                 long seconds = days * 24 * 60 * 60 + time.Hour * 60 * 60 + time.Minute * 60 + time.Second;
                 long milliseconds = seconds * 1000 + time.Nanosecond / 1000000;

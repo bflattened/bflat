@@ -64,11 +64,11 @@ namespace System
 
             char* pEnd = &pBuffer[BufferSize - 1];
             char* pCurrent = pEnd;
-            while (i != 0)
+            do
             {
                 *(pCurrent--) = (char)((i % 10) + '0');
                 i /= 10;
-            }
+            } while (i != 0);
 
             while (pCurrent <= pEnd)
                 Write(*(pCurrent++));
