@@ -32,6 +32,10 @@ static void Merge(string directory)
     int expectedFiles = 0;
     foreach (string subDirectory in Directory.EnumerateDirectories(directory))
     {
+        // x86 Windows is hacked up
+        if (subDirectory.Contains("x86") && subDirectory.Contains("windows"))
+            continue;
+
         expectedFiles++;
         foreach (var f in Directory.EnumerateFiles(subDirectory, "*.dll"))
         {
