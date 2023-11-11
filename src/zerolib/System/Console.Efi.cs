@@ -25,24 +25,21 @@ namespace System
         public static unsafe void Write(char c)
         {
             int cc = c;
-            EFI_SYSTEM_TABLE* tbl = StartupCodeHelpers.s_efiSystemTable;
-            tbl->ConOut->OutputString(tbl->ConOut, (char*)&cc);
+            EfiSystemTable->ConOut->OutputString(EfiSystemTable->ConOut, (char*)&cc);
         }
 
         public static unsafe ConsoleColor ForegroundColor
         {
             set
             {
-                EFI_SYSTEM_TABLE* tbl = StartupCodeHelpers.s_efiSystemTable;
-                tbl->ConOut->SetAttribute(tbl->ConOut, (uint)value);
+                EfiSystemTable->ConOut->SetAttribute(EfiSystemTable->ConOut, (uint)value);
             }
         }
 
         public static void SetCursorPosition(int x, int y)
         {
-            EFI_SYSTEM_TABLE* tbl = StartupCodeHelpers.s_efiSystemTable;
-            tbl->ConOut->SetCursorPosition(
-                tbl->ConOut,
+            EfiSystemTable->ConOut->SetCursorPosition(
+                EfiSystemTable->ConOut,
                 (uint)x,
                 (uint)y);
         }
@@ -55,8 +52,7 @@ namespace System
             if (s_scanCodeBuffer == 0)
             {
                 EFI_INPUT_KEY key;
-                EFI_SYSTEM_TABLE* tbl = StartupCodeHelpers.s_efiSystemTable;
-                if (tbl->ConIn->ReadKeyStroke(tbl->ConIn, &key) == 0)
+                if (EfiSystemTable->ConIn->ReadKeyStroke(EfiSystemTable->ConIn, &key) == 0)
                 {
                     s_keyBuffer = (char)key.UnicodeChar;
                     s_scanCodeBuffer = key.ScanCode;

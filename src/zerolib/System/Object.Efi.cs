@@ -14,15 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-using System.Runtime;
+#if UEFI
+
+using Internal.Runtime.CompilerHelpers;
 
 namespace System
 {
-    public partial class Object
+    public unsafe partial class Object
     {
-#pragma warning disable 169
-        // The layout of object is a contract with the compiler.
-        internal unsafe MethodTable* m_pMethodTable;
-#pragma warning restore 169
+        private static void* s_efiSystemTable;
+
+        internal static EFI_SYSTEM_TABLE* EfiSystemTable => (EFI_SYSTEM_TABLE*)s_efiSystemTable;
+        internal static void SetEfiSystemTable(EFI_SYSTEM_TABLE* t) => s_efiSystemTable = t;
     }
 }
+
+#endif

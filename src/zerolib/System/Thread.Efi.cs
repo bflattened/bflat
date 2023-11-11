@@ -16,15 +16,13 @@
 
 #if UEFI
 
-using Internal.Runtime.CompilerHelpers;
-
 namespace System.Threading
 {
     public static class Thread
     {
         public static unsafe void Sleep(int delayMs)
         {
-            StartupCodeHelpers.s_efiSystemTable->BootServices->Stall(1000 * (uint)delayMs);
+            EfiSystemTable->BootServices->Stall(1000 * (uint)delayMs);
             Environment.s_stallSinceLastTickCount += delayMs;
         }
     }
