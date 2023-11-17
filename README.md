@@ -33,11 +33,11 @@ bflat can either produce native executables, or native shared libraries that can
 
 ## 🥁 Where to get bflat
 
-On Windows: grab it from winget: `winget install bflat`. (November 2023: if this is your first install of a portable app, you'll hit [a bug](https://github.com/microsoft/winget-cli/issues/3749#issuecomment-1756340277) in winget and your PATH won't be updated. If typing `bflat --info` on the command line says the command wasn't recognized, either use the workaround from the issue, or sign out of Windows and sign back in.)
-
 Look at the [Releases tab](https://github.com/bflattened/bflat/releases) of this repo and download a compiler that matches your host system. These are all crosscompilers and can target any of the supported OSes/architectures.
 
 Unzip the archive to a convenient location and add the root to your PATH. You're all set. See the samples directory for a couple samples.
+
+On Windows, you can also grab it from winget: `winget install bflat`.
 
 The binary releases are licensed under the MIT license.
 
