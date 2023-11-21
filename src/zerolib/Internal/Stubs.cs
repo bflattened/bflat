@@ -57,8 +57,6 @@ namespace Internal.Runtime.CompilerHelpers
     // but the class itself being absent is unhandled. Let's add an empty class.
     unsafe partial class StartupCodeHelpers
     {
-        // Calling convention is wrong on x86 Windows so ifdeffing out
-#if !X86 || !WINDOWS
         // A couple symbols the generated code will need we park them in this class
         // for no particular reason. These aid in transitioning to/from managed code.
         // Since we don't have a GC, the transition is a no-op.
@@ -158,6 +156,5 @@ assigningNull:
 
             return result;
         }
-#endif // !X86 || !WINDOWS
     }
 }

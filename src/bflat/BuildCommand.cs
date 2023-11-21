@@ -345,6 +345,8 @@ internal class BuildCommand : CommandBase
         }
 
         string libc = result.GetValueForOption(TargetLibcOption);
+        if (targetOS == TargetOS.Windows && targetArchitecture == TargetArchitecture.X86)
+            libc ??= "none"; // don't have shcrt for Windows x86 because that one's hacked up
 
         string homePath = CommonOptions.HomePath;
         string libPath = Environment.GetEnvironmentVariable("BFLAT_LIB");
@@ -834,10 +836,19 @@ internal class BuildCommand : CommandBase
             else
             {
                 ldArgs.Append("/merge:.modules=.rdata ");
+                ldArgs.Append("/merge:.managedcode=.text ");
+
+                if (stdlib == StandardLibType.Zero)
+                {
+                    if (targetArchitecture == TargetArchitecture.ARM64)
+                        ldArgs.Append("zerolibnative.obj ");
+                }
             }
             if (targetOS == TargetOS.Windows)
             {
-                ldArgs.Append("sokol.lib advapi32.lib bcrypt.lib crypt32.lib iphlpapi.lib kernel32.lib mswsock.lib ncrypt.lib normaliz.lib  ntdll.lib ole32.lib oleaut32.lib user32.lib version.lib ws2_32.lib shell32.lib Secur32.Lib ");
+                if (targetArchitecture != TargetArchitecture.X86)
+                    ldArgs.Append("sokol.lib ");
+                ldArgs.Append("advapi32.lib bcrypt.lib crypt32.lib iphlpapi.lib kernel32.lib mswsock.lib ncrypt.lib normaliz.lib  ntdll.lib ole32.lib oleaut32.lib user32.lib version.lib ws2_32.lib shell32.lib Secur32.Lib ");
 
                 if (libc != "none")
                 {
@@ -940,6 +951,11 @@ internal class BuildCommand : CommandBase
                     ldArgs.Append("-lstdc++compat -lRuntime.WorkstationGC -lSystem.IO.Compression.Native -lSystem.Security.Cryptography.Native.OpenSsl ");
                     if (libc != "bionic")
                         ldArgs.Append("-lSystem.Globalization.Native -lSystem.Net.Security.Native ");
+                }
+                else if (stdlib == StandardLibType.Zero)
+                {
+                    if (targetArchitecture == TargetArchitecture.ARM64)
+                        ldArgs.Append($"\"{firstLib}/libzerolibnative.o\" ");
                 }
             }
                 
