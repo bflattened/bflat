@@ -16,7 +16,7 @@ You can also build it as:
 $ bflat build triangle.cs --target:winexe --no-reflection --no-stacktrace-data --no-globalization --no-exception-messages -Os --no-pie --separate-symbols
 ```
 
-On Windows, this will generate a small, ~790 kB executable.
+On Windows, this will generate a small, ~720 kB executable.
 
 To build the audio sample:
 

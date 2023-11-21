@@ -25,7 +25,7 @@ bflat can currently target:
 * x64/arm64 glibc-based Linux (2.17 or later on x64 (~CentOS 7), or 2.27 or later on arm64 (~Ubuntu 18.04))
 * arm64 bionic-based Linux (Android API level 21)
 * x64/arm64 Windows (Windows 7 or later)
-* x64 UEFI (only with `--stdlib:zero`)
+* x64/arm64 UEFI (only with `--stdlib:zero`)
 
 Support for musl-based Linux is in the works.
 
@@ -59,7 +59,7 @@ Follow me on [Twitter](https://twitter.com/MStrehovsky).
 
 ## 🎺 Optimizing output for size
 
-By default, bflat produces executables that are between 2 MB and 3 MB in size, even for the simplest apps. There are multiple reasons for this:
+By default, bflat produces executables that are between 1 MB and 2 MB in size, even for the simplest apps. There are multiple reasons for this:
 
 * bflat includes stack trace data about all compiled methods so that it can print pretty exception stack traces
 * even the simplest apps might end up calling into reflection (to e.g. get the name of the `OutOfMemoryException` class), globalization, etc.
@@ -104,7 +104,7 @@ Upper case of 'Вторник' is 'Вторник'
 Current stack frame is ms!<BaseAddress>+0xb82d4 at offset 340 in file:line:column <filename unknown>:0:0
 ```
 
-With all options turned on, one can comfortably fit useful programs under 1 MB. The above program is 735 kB on Windows at the time of writing this. The output executables are executables like any other. You can use a tool like UPX to compress them further (to ~300 kB range).
+With all options turned on, one can comfortably fit useful programs under 1 MB. The above program is 708 kB on Windows at the time of writing this. The output executables are executables like any other. You can add `-Os --no-pie --separate-symbols` for even more savings and use a tool like UPX to compress them further (to ~300 kB range).
 
 If you're targeting a Unix-like system, you might want to pass `--separate-symbols` to place debug information into a separate file (debug information is big!). This is not needed on Windows because the platform convention is to place debug information in a separate PDB file already.
 
