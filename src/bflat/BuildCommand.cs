@@ -655,10 +655,6 @@ internal class BuildCommand : CommandBase
 
         bool foldMethodBodies = optimizationMode != OptimizationMode.None;
         
-        // Work around problems on Windows
-        if (targetArchitecture == TargetArchitecture.X86 && targetOS == TargetOS.Windows)
-            foldMethodBodies = false;
-
         compilationRoots.Add(metadataManager);
         compilationRoots.Add(interopStubManager);
         builder
@@ -840,7 +836,7 @@ internal class BuildCommand : CommandBase
 
                 if (stdlib == StandardLibType.Zero)
                 {
-                    if (targetArchitecture == TargetArchitecture.ARM64)
+                    if (targetArchitecture is TargetArchitecture.ARM64 or TargetArchitecture.X86)
                         ldArgs.Append("zerolibnative.obj ");
                 }
             }
