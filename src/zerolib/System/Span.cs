@@ -67,7 +67,7 @@ namespace System
             _length = length;
         }
 
-        public ref readonly T this[int index]
+        public ref T this[int index]
         {
             [Intrinsic]
             get
