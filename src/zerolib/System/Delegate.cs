@@ -20,12 +20,12 @@ namespace System
     {
         internal object _firstParameter;
         internal object _helperObject;
-        internal nint _extraFunctionPointerOrData;
+        internal nint m_extraFunctionPointerOrData;
         internal IntPtr _functionPointer;
 
         private void InitializeClosedStaticThunk(object firstParameter, IntPtr functionPointer, IntPtr functionPointerThunk)
         {
-            _extraFunctionPointerOrData = functionPointer;
+            m_extraFunctionPointerOrData = functionPointer;
             _helperObject = firstParameter;
             _functionPointer = functionPointerThunk;
             _firstParameter = this;
@@ -35,7 +35,7 @@ namespace System
         {
             _firstParameter = this;
             _functionPointer = functionPointerThunk;
-            _extraFunctionPointerOrData = functionPointer;
+            m_extraFunctionPointerOrData = functionPointer;
         }
 
         private void InitializeClosedInstance(object firstParameter, IntPtr functionPointer)
