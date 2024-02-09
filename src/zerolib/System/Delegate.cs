@@ -18,30 +18,30 @@ namespace System
 {
     public abstract class Delegate
     {
-        internal object _firstParameter;
-        internal object _helperObject;
+        internal object m_firstParameter;
+        internal object m_helperObject;
         internal nint m_extraFunctionPointerOrData;
-        internal IntPtr _functionPointer;
+        internal IntPtr m_functionPointer;
 
         private void InitializeClosedStaticThunk(object firstParameter, IntPtr functionPointer, IntPtr functionPointerThunk)
         {
             m_extraFunctionPointerOrData = functionPointer;
-            _helperObject = firstParameter;
-            _functionPointer = functionPointerThunk;
-            _firstParameter = this;
+            m_helperObject = firstParameter;
+            m_functionPointer = functionPointerThunk;
+            m_firstParameter = this;
         }
 
         private void InitializeOpenStaticThunk(object firstParameter, IntPtr functionPointer, IntPtr functionPointerThunk)
         {
-            _firstParameter = this;
-            _functionPointer = functionPointerThunk;
+            m_firstParameter = this;
+            m_functionPointer = functionPointerThunk;
             m_extraFunctionPointerOrData = functionPointer;
         }
 
         private void InitializeClosedInstance(object firstParameter, IntPtr functionPointer)
         {
-            _functionPointer = functionPointer;
-            _firstParameter = firstParameter;
+            m_functionPointer = functionPointer;
+            m_firstParameter = firstParameter;
         }
     }
 
