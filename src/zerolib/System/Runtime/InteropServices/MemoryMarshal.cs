@@ -18,10 +18,21 @@ using System.Runtime.CompilerServices;
 
 namespace System.Runtime.InteropServices
 {
-    public static class MemoryMarshal
+    public static partial class MemoryMarshal
     {
         [Intrinsic]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T GetArrayDataReference<T>(T[] array) => ref Unsafe.As<byte, T>(ref Unsafe.As<RawArrayData>(array).Data);
+
+       // I believe this is needed by the compiler for the C# inline array feature.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe static System.Span<T> CreateSpan<T>(ref T reference, int length)
+            => new System.Span<T>(Unsafe.AsPointer(ref reference), length);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe static System.ReadOnlySpan<T> CreateReadOnlySpan<T>(ref T reference, int length)
+            => new System.ReadOnlySpan<T>(Unsafe.AsPointer(ref reference), length);
     }
+    // This is needed for the 'unmanaged' generic constraint of C#.
+    public enum UnmanagedType { }
 }

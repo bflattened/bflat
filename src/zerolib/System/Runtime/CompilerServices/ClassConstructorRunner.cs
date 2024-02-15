@@ -20,8 +20,14 @@ namespace System.Runtime.CompilerServices
 {
     // A class responsible for running static constructors. The compiler will call into this
     // code to ensure static constructors run and that they only run once.
-    internal static class ClassConstructorRunner
+    internal static partial class ClassConstructorRunner
     {
+        private static unsafe object CheckStaticClassConstructionReturnGCStaticBase(ref StaticClassConstructionContext context, object gcStaticBase)
+        {
+            CheckStaticClassConstruction(ref context);
+            return gcStaticBase;
+        }
+
         private static IntPtr CheckStaticClassConstructionReturnNonGCStaticBase(ref StaticClassConstructionContext context, IntPtr nonGcStaticBase)
         {
             CheckStaticClassConstruction(ref context);

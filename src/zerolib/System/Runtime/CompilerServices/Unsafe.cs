@@ -30,5 +30,7 @@ namespace System.Runtime.CompilerServices
         public static extern T As<T>(object o) where T : class;
         [Intrinsic]
         public static extern void* AsPointer<T>(ref T value);
+        [Intrinsic]
+        public static extern ref T AsRef<T>(void* source);
     }
 }
