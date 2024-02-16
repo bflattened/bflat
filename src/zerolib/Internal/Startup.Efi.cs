@@ -43,7 +43,7 @@ namespace Internal.Runtime.CompilerHelpers
             // argc and argv are garbage because EfiMain didn't pass any
         }
 
-        private static string[] GetMainMethodArguments()
+        internal static string[] GetMainMethodArguments()
         {
             return new string[0];
         }

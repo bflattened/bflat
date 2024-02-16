@@ -33,7 +33,7 @@ namespace Internal.Runtime.CompilerHelpers
             s_argv = argv;
         }
 
-        private static string[] GetMainMethodArguments()
+        internal static string[] GetMainMethodArguments()
         {
             string[] args = new string[s_argc - 1];
             for (int i = 1; i < s_argc; ++i)

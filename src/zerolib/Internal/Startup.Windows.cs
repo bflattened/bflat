@@ -29,7 +29,7 @@ namespace Internal.Runtime.CompilerHelpers
             // argc and argv are a lie because CRT didn't start the process on Windows
         }
 
-        private static string[] GetMainMethodArguments()
+        internal static string[] GetMainMethodArguments()
         {
             int argc;
             char** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
