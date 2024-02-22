@@ -22,12 +22,6 @@ namespace System.Runtime.CompilerServices
     // code to ensure static constructors run and that they only run once.
     internal static partial class ClassConstructorRunner
     {
-        private static unsafe object CheckStaticClassConstructionReturnGCStaticBase(ref StaticClassConstructionContext context, object gcStaticBase)
-        {
-            CheckStaticClassConstruction(ref context);
-            return gcStaticBase;
-        }
-
         private static IntPtr CheckStaticClassConstructionReturnNonGCStaticBase(ref StaticClassConstructionContext context, IntPtr nonGcStaticBase)
         {
             CheckStaticClassConstruction(ref context);

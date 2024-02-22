@@ -52,9 +52,6 @@ namespace System.Runtime.CompilerServices
     {
         public InlineArrayAttribute(int size) { }
     }
-    // Without this, you cannot use extension methods.
-    public sealed class ExtensionAttribute : Attribute
-    {
-        public ExtensionAttribute() { }
-    }
+
+    public sealed class ExtensionAttribute : Attribute { }
 }
