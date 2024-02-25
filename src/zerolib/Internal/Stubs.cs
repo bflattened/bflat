@@ -46,7 +46,7 @@ namespace System.Runtime
 
 namespace Internal.Runtime.CompilerHelpers
 {
-    class ThrowHelpers
+    partial class ThrowHelpers
     {
         static void ThrowIndexOutOfRangeException() => Environment.FailFast(null);
         static void ThrowDivideByZeroException() => Environment.FailFast(null);

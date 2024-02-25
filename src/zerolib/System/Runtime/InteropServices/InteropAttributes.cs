@@ -16,6 +16,8 @@
 
 namespace System.Runtime.InteropServices
 {
+    public enum UnmanagedType { }
+
     public enum CharSet
     {
         None = 1,

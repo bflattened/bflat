@@ -47,4 +47,11 @@ namespace System.Runtime.CompilerServices
     public class CallConvSuppressGCTransition { }
     public class CallConvThiscall { }
     public class CallConvMemberFunction { }
+
+    public sealed class InlineArrayAttribute : Attribute
+    {
+        public InlineArrayAttribute(int size) { }
+    }
+
+    public sealed class ExtensionAttribute : Attribute { }
 }
