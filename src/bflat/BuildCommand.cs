@@ -735,7 +735,7 @@ internal class BuildCommand : CommandBase
         if (nativeLib)
         {
             exportsFile = Path.ChangeExtension(outputFilePath, targetOS == TargetOS.Windows ? ".def" : ".txt");
-            ExportsFileWriter defFileWriter = new ExportsFileWriter(typeSystemContext, exportsFile);
+            ExportsFileWriter defFileWriter = new ExportsFileWriter(typeSystemContext, exportsFile, []);
             foreach (var compilationRoot in compilationRoots)
             {
                 if (compilationRoot is UnmanagedEntryPointsRootProvider provider)
