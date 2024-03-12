@@ -35,7 +35,7 @@ from the repo root, or build binaries by running:
 $ dotnet build src/bflat/bflat.csproj
 ```
 
-This will build/run bflat on top of the official .NET 6 runtime.
+This will build/run bflat on top of the official .NET runtime.
 
 To create bflat-compiled versions of bflat, run:
 
