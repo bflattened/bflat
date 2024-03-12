@@ -1,6 +1,6 @@
 # Building bflat from source
 
-You'll need .NET 6 to build bflat. The shipping binaries of bflat are built with bflat, but .NET 6 is used for bootstrapping.
+You'll need the .NET SDK to build bflat. The shipping binaries of bflat are built with bflat, but the .NET SDK is used for bootstrapping.
 
 Before you can build bflat, you need to make sure you can restore the packages built out of the bflattened/runtime repo. For reasons that escape me, NuGet packages published to the Github registry require authentication. You need a github account and you need to create a PAT token to read packages. Follow the information [here](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-nuget-registry).
 
