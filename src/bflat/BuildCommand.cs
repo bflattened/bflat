@@ -854,7 +854,6 @@ internal class BuildCommand : CommandBase
                     ldArgs.Append("api-ms-win-crt-multibyte-l1-1-0.lib api-ms-win-crt-math-l1-1-0.lib ");
                     ldArgs.Append("api-ms-win-crt-process-l1-1-0.lib api-ms-win-crt-runtime-l1-1-0.lib api-ms-win-crt-stdio-l1-1-0.lib ");
                     ldArgs.Append("api-ms-win-crt-string-l1-1-0.lib api-ms-win-crt-time-l1-1-0.lib api-ms-win-crt-utility-l1-1-0.lib ");
-                    ldArgs.Append("kernel32-supplements.lib ");
                 }
             }
             ldArgs.Append("/opt:ref,icf /nodefaultlib:libcpmt.lib ");
