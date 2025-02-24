@@ -55,7 +55,7 @@ bflat comes with two standard libraries. The first one (called `DotNet`) is the 
 
 ## 📻 How to stay up-to-date on bflat?
 
-Follow me on [BlueSky](https://bsky.app/profile/migeel.sk) and [Twitter](https://twitter.com/MStrehovsky).
+Follow me on [Bluesky](https://bsky.app/profile/migeel.sk).
 
 ## 🎺 Optimizing output for size
 
