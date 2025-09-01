@@ -25,7 +25,7 @@ jobs:
       - name: Setup dotnet
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
           dotnet-quality: 'preview'
       - name: Ask Github to please let us use the package registry
         run: |
