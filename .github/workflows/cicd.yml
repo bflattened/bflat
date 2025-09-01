@@ -73,42 +73,42 @@ jobs:
           tar -C layouts/linux-glibc-arm64/ -czvf layouts/linux-glibc-arm64.tar.gz .
           tar -C layouts/obj/linux-glibc-arm64/ -czvf layouts/linux-glibc-arm64-symbols.tar.gz bflat.dwo
       - name: Archive windows-x64 hosted compiler
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bflat-windows-x64.zip
           path: layouts/windows-x64.zip
       - name: Archive windows-x64 hosted compiler symbols
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: debugsymbols-bflat-windows-x64.zip
           path: layouts/windows-x64-symbols.zip
       - name: Archive windows-arm64 hosted compiler
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bflat-windows-arm64.zip
           path: layouts/windows-arm64.zip
       - name: Archive windows-arm64 hosted compiler symbols
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: debugsymbols-bflat-windows-arm64.zip
           path: layouts/windows-arm64-symbols.zip
       - name: Archive linux-glibc-x64 hosted compiler
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bflat-linux-glibc-x64.zip
           path: layouts/linux-glibc-x64.tar.gz
       - name: Archive linux-glibc-x64 hosted compiler symbols
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: debugsymbols-bflat-linux-glibc-x64.zip
           path: layouts/linux-glibc-x64-symbols.tar.gz
       - name: Archive linux-glibc-arm64 hosted compiler
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: bflat-linux-glibc-arm64.zip
           path: layouts/linux-glibc-arm64.tar.gz
       - name: Archive linux-glibc-arm64 hosted compiler symbols
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: debugsymbols-bflat-linux-glibc-arm64.zip
           path: layouts/linux-glibc-arm64-symbols.tar.gz
