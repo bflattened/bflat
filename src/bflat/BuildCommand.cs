@@ -32,6 +32,7 @@ using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis;
 
 using ILCompiler;
+using ILCompiler.Dataflow;
 
 using Internal.TypeSystem;
 using Internal.IL;
@@ -210,9 +211,12 @@ internal class BuildCommand : CommandBase
             userSpecificedOutputFileName != null ? Path.GetFileNameWithoutExtension(userSpecificedOutputFileName) :
             CommonOptions.GetOutputFileNameWithoutSuffix(userSpecifiedInputFiles);
 
+        bool disableCompilerGenerateHeuristics = false;
+
         ILProvider ilProvider = new NativeAotILProvider();
         bool verbose = result.GetValueForOption(CommonOptions.VerbosityOption);
-        var logger = new Logger(Console.Out, ilProvider, verbose, Array.Empty<int>(), singleWarn: false, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>());
+        var logger = new Logger(Console.Out, ilProvider, verbose, Array.Empty<int>(), singleWarn: false, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(),
+            false, new Dictionary<int, bool>(), disableCompilerGenerateHeuristics);
 
         BuildTargetType buildTargetType = result.GetValueForOption(CommonOptions.TargetOption);
         string compiledModuleName = Path.GetFileName(outputNameWithoutSuffix);
@@ -316,11 +320,12 @@ internal class BuildCommand : CommandBase
 
         if (stdlib != StandardLibType.DotNet)
         {
+            SettingsTunnel.ZerolibLike = true;
             SettingsTunnel.EmitGCInfo = false;
             SettingsTunnel.EmitEHInfo = false;
             SettingsTunnel.EmitGSCookies = false;
-            if (debugInfoFormat == 0)
-                SettingsTunnel.EmitUnwindInfo = false;
+            //if (debugInfoFormat == 0)
+            //    SettingsTunnel.EmitUnwindInfo = false;
         }
 
         bool supportsReflection = !disableReflection && systemModuleName == DefaultSystemModule;
@@ -408,21 +413,22 @@ internal class BuildCommand : CommandBase
         typeSystemContext.SetSystemModule(typeSystemContext.GetModuleForSimpleName(systemModuleName));
         EcmaModule compiledAssembly = typeSystemContext.GetModuleForSimpleName(compiledModuleName);
 
+        ilProvider = new HardwareIntrinsicILProvider(
+            instructionSetSupport,
+            new ExternSymbolMappedField(typeSystemContext.GetWellKnownType(WellKnownType.Int32), "g_cpuFeatures"),
+            ilProvider);
+
         //
         // Initialize compilation group and compilation roots
         //
 
         List<string> initAssemblies = new List<string> { "System.Private.CoreLib" };
 
-        if (!disableReflection || !disableStackTraceData)
+        if (!disableReflection && !disableStackTraceData)
             initAssemblies.Add("System.Private.StackTraceMetadata");
 
         initAssemblies.Add("System.Private.TypeLoader");
-
-        if (!disableReflection)
-            initAssemblies.Add("System.Private.Reflection.Execution");
-        else
-            initAssemblies.Add("System.Private.DisabledReflection");
+        initAssemblies.Add("System.Private.Reflection.Execution");
 
         // Build a list of assemblies that have an initializer that needs to run before
         // any user code runs.
@@ -442,6 +448,7 @@ internal class BuildCommand : CommandBase
 
         CompilationModuleGroup compilationGroup;
         List<ICompilationRootProvider> compilationRoots = new List<ICompilationRootProvider>();
+        TypeMapManager typeMapManager = new UsageBasedTypeMapManager(TypeMapMetadata.CreateFromAssembly((EcmaAssembly)compiledAssembly, typeSystemContext));
 
         compilationRoots.Add(new UnmanagedEntryPointsRootProvider(compiledAssembly));
 
@@ -453,7 +460,7 @@ internal class BuildCommand : CommandBase
         }
         else
         {
-            compilationRoots.Add(new GenericRootProvider<object>(null, (_, rooter) => rooter.RootReadOnlyDataBlob(new byte[4], 4, "Trap threads", "RhpTrapThreads")));
+            compilationRoots.Add(new GenericRootProvider<object>(null, (_, rooter) => rooter.RootReadOnlyDataBlob(new byte[4], 4, "Trap threads", "RhpTrapThreads", exportHidden: true)));
         }
 
         if (!nativeLib)
@@ -462,7 +469,7 @@ internal class BuildCommand : CommandBase
         }
 
         if (compiledAssembly != typeSystemContext.SystemModule)
-            compilationRoots.Add(new UnmanagedEntryPointsRootProvider((EcmaModule)typeSystemContext.SystemModule));
+            compilationRoots.Add(new UnmanagedEntryPointsRootProvider((EcmaModule)typeSystemContext.SystemModule, hidden: true));
         compilationGroup = new SingleFileCompilationModuleGroup();
 
         if (nativeLib)
@@ -509,12 +516,25 @@ internal class BuildCommand : CommandBase
             { "System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization", false },
             { "System.Resources.ResourceManager.AllowCustomResourceTypes", false },
             { "System.Text.Encoding.EnableUnsafeUTF7Encoding", false },
-            { "System.Runtime.Serialization.DataContractSerializer.IsReflectionOnly", true },
-            { "System.Xml.Serialization.XmlSerializer.IsReflectionOnly", true },
-            { "System.Xml.XmlResolver.IsNetworkingEnabledByDefault", false },
-            { "System.Linq.Expressions.CanCompileToIL", false },
             { "System.Linq.Expressions.CanEmitObjectArrayDelegate", false },
-            { "System.Linq.Expressions.CanCreateArbitraryDelegates", false },
+            { "System.ComponentModel.DefaultValueAttribute.IsSupported", false },
+            { "System.ComponentModel.Design.IDesignerHost.IsSupported", false },
+            { "System.ComponentModel.TypeConverter.EnableUnsafeBinaryFormatterInDesigntimeLicenseContextSerialization", false },
+            { "System.ComponentModel.TypeDescriptor.IsComObjectDescriptorSupported", false },
+            { "System.Data.DataSet.XmlSerializationIsSupported", false },
+            { "System.Linq.Enumerable.IsSizeOptimized", true },
+            { "System.Net.SocketsHttpHandler.Http3Support", false },
+            { "System.Reflection.Metadata.MetadataUpdater.IsSupported", false },
+            { "System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported", false },
+            { "System.Runtime.InteropServices.BuiltInComInterop.IsSupported", false },
+            { "System.Runtime.InteropServices.EnableConsumingManagedCodeFromNativeHosting", false },
+            { "System.Runtime.InteropServices.EnableCppCLIHostActivation", false },
+            { "System.Runtime.InteropServices.Marshalling.EnableGeneratedComInterfaceComImportInterop", false },
+            { "System.StartupHookProvider.IsSupported", false },
+            { "System.Text.Json.JsonSerializer.IsReflectionEnabledByDefault", false },
+            { "System.Threading.Thread.EnableAutoreleasePool", false },
+            { "System.Threading.ThreadPool.UseWindowsThreadPool", true },
+            { "System.Globalization.PredefinedCulturesOnly", true },
         };
 
         bool disableExceptionMessages = result.GetValueForOption(NoExceptionMessagesOption);
@@ -529,10 +549,9 @@ internal class BuildCommand : CommandBase
             featureSwitches.Add("System.Globalization.Invariant", true);
         }
 
-        if (disableReflection)
+        if (disableStackTraceData)
         {
-            featureSwitches.Add("System.Collections.Generic.DefaultComparers", false);
-            featureSwitches.Add("System.Reflection.IsReflectionExecutionAvailable", false);
+            featureSwitches.Add("System.Diagnostics.StackTrace.IsSupported", false);
         }
 
         foreach (var featurePair in result.GetValueForOption(FeatureSwitchOption))
@@ -549,7 +568,9 @@ internal class BuildCommand : CommandBase
         BodyAndFieldSubstitutions substitutions = default;
         IReadOnlyDictionary<ModuleDesc, IReadOnlySet<string>> resourceBlocks = default;
 
-        ilProvider = new FeatureSwitchManager(ilProvider, logger, featureSwitches, substitutions);
+        SubstitutionProvider substitutionProvider = new SubstitutionProvider(logger, featureSwitches, substitutions);
+        ILProvider unsubstitutedILProvider = ilProvider;
+        ilProvider = new SubstitutedILProvider(ilProvider, substitutionProvider, new DevirtualizationManager());
 
         var stackTracePolicy = !disableStackTraceData ?
             (StackTraceEmissionPolicy)new EcmaMethodStackTraceEmissionPolicy() : new NoStackTraceEmissionPolicy();
@@ -563,7 +584,6 @@ internal class BuildCommand : CommandBase
 
             resBlockingPolicy = new ManifestResourceBlockingPolicy(logger, featureSwitches, resourceBlocks);
 
-            metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.AnonymousTypeHeuristic;
             metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.ReflectionILScanning;
         }
         else
@@ -573,8 +593,8 @@ internal class BuildCommand : CommandBase
         }
         DynamicInvokeThunkGenerationPolicy invokeThunkGenerationPolicy = new DefaultDynamicInvokeThunkGenerationPolicy();
 
-        var compilerGenerateState = new ILCompiler.Dataflow.CompilerGeneratedState(ilProvider, logger);
-        var flowAnnotations = new ILLink.Shared.TrimAnalysis.FlowAnnotations(logger, ilProvider, compilerGenerateState);
+        CompilerGeneratedState compilerGeneratedState = new CompilerGeneratedState(ilProvider, logger, disableCompilerGenerateHeuristics);
+        var flowAnnotations = new ILLink.Shared.TrimAnalysis.FlowAnnotations(logger, ilProvider, compilerGeneratedState);
 
         MetadataManagerOptions metadataOptions = default;
         if (stdlib == StandardLibType.DotNet)
@@ -610,11 +630,12 @@ internal class BuildCommand : CommandBase
         TypePreinit.TypePreinitializationPolicy preinitPolicy = preinitStatics ?
                 new TypePreinit.TypeLoaderAwarePreinitializationPolicy() : new TypePreinit.DisabledPreinitializationPolicy();
 
-        var preinitManager = new PreinitializationManager(typeSystemContext, compilationGroup, ilProvider, preinitPolicy);
+        var preinitManager = new PreinitializationManager(typeSystemContext, compilationGroup, ilProvider, preinitPolicy, new StaticReadOnlyFieldPolicy(), flowAnnotations);
 
         builder
             .UseILProvider(ilProvider)
             .UsePreinitializationManager(preinitManager)
+            .UseTypeMapManager(typeMapManager)
         .UseResilience(true);
 
         ILScanResults scanResults = null;
@@ -626,6 +647,7 @@ internal class BuildCommand : CommandBase
                 .UseCompilationRoots(compilationRoots)
                 .UseMetadataManager(metadataManager)
                 .UseInteropStubManager(interopStubManager)
+                .UseTypeMapManager(typeMapManager)
                 .UseLogger(logger);
 
             string scanDgmlLogFileName = result.GetValueForOption(MstatOption) ? Path.ChangeExtension(outputFilePath, ".scan.dgml.xml") : null;
@@ -659,7 +681,7 @@ internal class BuildCommand : CommandBase
         compilationRoots.Add(interopStubManager);
         builder
             .UseInstructionSetSupport(instructionSetSupport)
-            .UseMethodBodyFolding(foldMethodBodies)
+            .UseMethodBodyFolding(foldMethodBodies ? MethodBodyFoldingMode.All : MethodBodyFoldingMode.None)
             .UseMetadataManager(metadataManager)
             .UseInteropStubManager(interopStubManager)
             .UseLogger(logger)
@@ -670,6 +692,19 @@ internal class BuildCommand : CommandBase
 
         if (scanResults != null)
         {
+            DevirtualizationManager devirtualizationManager = scanResults.GetDevirtualizationManager();
+
+            builder.UseTypeMapManager(scanResults.GetTypeMapManager());
+
+            substitutions.AppendFrom(scanResults.GetBodyAndFieldSubstitutions());
+
+            substitutionProvider = new SubstitutionProvider(logger, featureSwitches, substitutions);
+
+            ilProvider = new SubstitutedILProvider(unsubstitutedILProvider, substitutionProvider, devirtualizationManager, metadataManager);
+
+            // Use a more precise IL provider that uses whole program analysis for dead branch elimination
+            builder.UseILProvider(ilProvider);
+
             // If we have a scanner, feed the vtable analysis results to the compilation.
             // This could be a command line switch if we really wanted to.
             builder.UseVTableSliceProvider(scanResults.GetVTableLayoutInfo());
@@ -681,7 +716,7 @@ internal class BuildCommand : CommandBase
             // If we have a scanner, we can drive devirtualization using the information
             // we collected at scanning time (effectively sealing unsealed types if possible).
             // This could be a command line switch if we really wanted to.
-            builder.UseDevirtualizationManager(scanResults.GetDevirtualizationManager());
+            builder.UseDevirtualizationManager(devirtualizationManager);
 
             // If we use the scanner's result, we need to consult it to drive inlining.
             // This prevents e.g. devirtualizing and inlining methods on types that were
@@ -698,8 +733,11 @@ internal class BuildCommand : CommandBase
             // has the whole program view.
             if (preinitStatics)
             {
-                preinitManager = new PreinitializationManager(typeSystemContext, compilationGroup, ilProvider, scanResults.GetPreinitializationPolicy());
-                builder.UsePreinitializationManager(preinitManager);
+                var readOnlyFieldPolicy = scanResults.GetReadOnlyFieldPolicy();
+                preinitManager = new PreinitializationManager(typeSystemContext, compilationGroup, ilProvider, scanResults.GetPreinitializationPolicy(),
+                    readOnlyFieldPolicy, flowAnnotations);
+                builder.UsePreinitializationManager(preinitManager)
+                    .UseReadOnlyFieldPolicy(readOnlyFieldPolicy);
             }
 
             // If we have a scanner, we can inline threadstatics storage using the information
@@ -738,7 +776,7 @@ internal class BuildCommand : CommandBase
             ExportsFileWriter defFileWriter = new ExportsFileWriter(typeSystemContext, exportsFile, []);
             foreach (var compilationRoot in compilationRoots)
             {
-                if (compilationRoot is UnmanagedEntryPointsRootProvider provider)
+                if (compilationRoot is UnmanagedEntryPointsRootProvider provider && !provider.Hidden)
                     defFileWriter.AddExportedMethods(provider.ExportedMethods);
             }
 
@@ -827,7 +865,9 @@ internal class BuildCommand : CommandBase
                 ldArgs.Append("/debug ");
             if (stdlib == StandardLibType.DotNet)
             {
-                ldArgs.Append("Runtime.WorkstationGC.lib System.IO.Compression.Native.Aot.lib System.Globalization.Native.Aot.lib ");
+                ldArgs.Append("Runtime.WorkstationGC.lib System.IO.Compression.Native.Aot.lib System.Globalization.Native.Aot.lib aotminipal.lib zlibstatic.lib brotlicommon.lib brotlienc.lib brotlidec.lib standalonegc-disabled.lib ");
+                if (targetArchitecture == TargetArchitecture.X64)
+                    ldArgs.Append("Runtime.VxsortDisabled.lib ");
             }
             else
             {
@@ -856,7 +896,7 @@ internal class BuildCommand : CommandBase
                     ldArgs.Append("api-ms-win-crt-string-l1-1-0.lib api-ms-win-crt-time-l1-1-0.lib api-ms-win-crt-utility-l1-1-0.lib ");
                 }
             }
-            ldArgs.Append("/opt:ref,icf /nodefaultlib:libcpmt.lib ");
+            ldArgs.Append("/opt:ref,icf /nodefaultlib:libcpmt.lib /nodefaultlib:libcmt.lib /nodefaultlib:oldnames.lib ");
         }
         else if (targetOS == TargetOS.Linux)
         {
@@ -943,7 +983,9 @@ internal class BuildCommand : CommandBase
                 ldArgs.Append("-lSystem.Native ");
                 if (stdlib == StandardLibType.DotNet)
                 {
-                    ldArgs.Append("-lstdc++compat -lRuntime.WorkstationGC -lSystem.IO.Compression.Native -lSystem.Security.Cryptography.Native.OpenSsl ");
+                    ldArgs.Append("-lstdc++compat -lRuntime.WorkstationGC -lSystem.IO.Compression.Native -lSystem.Security.Cryptography.Native.OpenSsl -laotminipal -lz -lstandalonegc-disabled ");
+                    if (targetArchitecture == TargetArchitecture.X64)
+                        ldArgs.Append("-lRuntime.VxsortDisabled ");
                     if (libc != "bionic")
                         ldArgs.Append("-lSystem.Globalization.Native -lSystem.Net.Security.Native ");
                 }

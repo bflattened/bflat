@@ -32,5 +32,8 @@ namespace System.Runtime.CompilerServices
         public static extern void* AsPointer<T>(ref T value);
         [Intrinsic]
         public static extern ref T AsRef<T>(void* source);
+        [Intrinsic]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static extern IntPtr ByteOffset<T>(ref readonly T origin, ref readonly T target);
     }
 }
