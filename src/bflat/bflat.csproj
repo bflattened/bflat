@@ -10,13 +10,13 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <RuntimeVersion>10.0.0-rc.1.25451.2</RuntimeVersion>
+    <RuntimeVersion>10.0.0-rc.1.25527.1</RuntimeVersion>
     <RuntimeUri>https://github.com/bflattened/runtime/releases/download/</RuntimeUri>
 
     <BlobsVersion>1.3</BlobsVersion>
     <BlobsUri>https://github.com/bflattened/blobs/releases/download/</BlobsUri>
 
-    <MicrosoftCodeAnalysisCSharpVersion>4.8.0-3.final</MicrosoftCodeAnalysisCSharpVersion>
+    <MicrosoftCodeAnalysisCSharpVersion>5.0.0-2.final</MicrosoftCodeAnalysisCSharpVersion>
   </PropertyGroup>
 
   <ItemGroup>
