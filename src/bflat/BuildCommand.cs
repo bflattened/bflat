@@ -350,8 +350,6 @@ internal class BuildCommand : CommandBase
         }
 
         string libc = result.GetValueForOption(TargetLibcOption);
-        if (targetOS == TargetOS.Windows && targetArchitecture == TargetArchitecture.X86)
-            libc ??= "none"; // don't have shcrt for Windows x86 because that one's hacked up
 
         string homePath = CommonOptions.HomePath;
         string libPath = Environment.GetEnvironmentVariable("BFLAT_LIB");
@@ -896,7 +894,7 @@ internal class BuildCommand : CommandBase
                     ldArgs.Append("api-ms-win-crt-string-l1-1-0.lib api-ms-win-crt-time-l1-1-0.lib api-ms-win-crt-utility-l1-1-0.lib ");
                 }
             }
-            ldArgs.Append("/opt:ref,icf /nodefaultlib:libcpmt.lib /nodefaultlib:libcmt.lib /nodefaultlib:oldnames.lib ");
+            ldArgs.Append("/opt:ref,icf /nodefaultlib:libcpmt.lib /nodefaultlib:libcmt.lib /nodefaultlib:oldnames.lib /nodefaultlib:uuid.lib ");
         }
         else if (targetOS == TargetOS.Linux)
         {
